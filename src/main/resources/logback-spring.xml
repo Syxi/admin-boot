@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <logger name="io.swagger" level="ERROR"/>
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="yan"/>
+    <springProperty scope="context" name="env" source="spring.profiles.active" defaultValue="local"/>
+
+    <!-- ip 解析 -->
+    <define name="ip" class="com.admin.common.converter.IpConverter"/>
+
+    <!--定义日志存放的位置-->
+    <property name="logHome" value="../logs/${appName}" />
+
+    <!--定义日志每个切分文件的最大大小-->
+    <property name="perLogSize" value="60MB"/>
+
+    <!--为了防止进程退出时，内存中的数据丢失，请加上此选项-->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+
+    <!-- 彩色日志 -->
+    <!-- 彩色日志依赖的渲染类 -->
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
+    <conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter" />
+    <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
+    <!-- 彩色日志格式，注意加上TRACE_ID -->
+    <property name="CONSOLE_LOG_PATTERN" value="${CONSOLE_LOG_PATTERN:-%clr([${appName}]){magenta} %clr([${ip}]){cyan} %clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(pid:${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39} L:%L){cyan} %clr(:){faint} [%tid][%X{userId}|%X{requestId}] %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"/>
+
+    <property name="FILE_LOG_PATTERN" value="[${appName}][${ip}][%d{yyyy-MM-dd HH:mm:ss}][%-5level][%tid][%X{userId}|%X{requestId}][%thread][%M][%c,%L]==>%msg%n" />
+    <property name="FILE_LOG_PATTERN_ERROR" value="[${appName}][${ip}][%d{yyyy-MM-dd HH:mm:ss}][%-5level][%tid][%X{userId}|%X{requestId}][%thread][%logger{80}.%M][%c,%L]-->%msg%n" />
+
+    <!-- 控制台日志：输出全部日志到控制台 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="org.apache.skywalking.apm.toolkit.log.logback.v1.x.TraceIdPatternLogbackLayout">
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </layout>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- 文件日志：输出全部日志到文件 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logHome}/${appName}-log.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <MaxFileSize>${perLogSize}</MaxFileSize>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="org.apache.skywalking.apm.toolkit.log.logback.v1.x.TraceIdPatternLogbackLayout">
+                <pattern>${FILE_LOG_PATTERN}</pattern>
+            </layout>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logHome}/${appName}-error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <MaxFileSize>${perLogSize}</MaxFileSize>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="org.apache.skywalking.apm.toolkit.log.logback.v1.x.TraceIdPatternLogbackLayout">
+                <pattern>${FILE_LOG_PATTERN_ERROR}</pattern>
+            </layout>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+    </appender>
+
+    <!-- 可用来获取StatusManager中的状态 -->
+    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
+
+    <!-- 解决debug模式下循环发送的问题 -->
+    <logger name="org.apache.http.impl.conn.Wire" level="WARN" />
+
+    <!--本地、开发、sit、测试、uat:日志既输出控制台，又输出到文件-->
+    <springProfile name="local,dev,sit,test,uat">
+        <logger name="com.netflix.discovery.DiscoveryClient" level="WARN"/>
+        <root>
+            <level value="INFO" />
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="FILE" />
+            <appender-ref ref="ERROR_FILE" />
+        </root>
+    </springProfile>
+
+    <!--生产环境:日志既仅输出到文件-->
+    <springProfile name="prod">
+        <logger name="com.netflix.discovery.DiscoveryClient" level="WARN"/>
+        <root>
+            <level value="INFO" />
+            <appender-ref ref="FILE" />
+            <appender-ref ref="ERROR_FILE" />
+        </root>
+    </springProfile>
+
+</configuration>

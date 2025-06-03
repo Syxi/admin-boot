@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.module.system.mapper.SysPositionOrganizationMapper">
+
+    <resultMap id="BaseResultMap" type="com.admin.module.system.entity.SysPositionOrganization">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="positionId" column="position_id" jdbcType="BIGINT"/>
+            <result property="organId" column="organ_id" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,position_id,organ_id
+    </sql>
+</mapper>

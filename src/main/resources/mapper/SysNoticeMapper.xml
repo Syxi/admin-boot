@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.module.system.mapper.SysNoticeMapper">
+
+    <resultMap id="BaseResultMap" type="com.admin.module.system.entity.SysNotice">
+            <id property="noticeId" column="notice_id" jdbcType="BIGINT"/>
+            <result property="noticeTitle" column="notice_title" jdbcType="VARCHAR"/>
+            <result property="noticeType" column="notice_type" jdbcType="TINYINT"/>
+            <result property="noticeContent" column="notice_content" jdbcType="VARCHAR"/>
+            <result property="isPublish" column="is_publish" jdbcType="TINYINT"/>
+            <result property="isTop" column="is_top" jdbcType="TINYINT"/>
+            <result property="remark" column="remark" jdbcType="VARCHAR"/>
+            <result property="topTime" column="top_time" jdbcType="TIMESTAMP"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="createUser" column="create_user" jdbcType="BIGINT"/>
+            <result property="updateUser" column="update_user" jdbcType="BIGINT"/>
+            <result property="deleted" column="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,notice_title,notice_type,
+        notice_context,is_publish,is_top,
+        remark,create_time,update_time,
+        create_user,update_user,deleted
+    </sql>
+</mapper>

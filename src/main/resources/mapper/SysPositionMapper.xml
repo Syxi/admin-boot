@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.module.system.mapper.SysPositionMapper">
+
+    <resultMap id="BaseResultMap" type="com.admin.module.system.entity.SysPosition">
+            <id property="positionId" column="position_id" jdbcType="BIGINT"/>
+            <result property="positionName" column="position_name" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+            <result property="salaryRange" column="salary_range" jdbcType="VARCHAR"/>
+            <result property="experience" column="experience" jdbcType="VARCHAR"/>
+            <result property="education" column="education" jdbcType="TINYINT"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="createUser" column="create_user" jdbcType="BIGINT"/>
+            <result property="updateUser" column="update_user" jdbcType="BIGINT"/>
+            <result property="deleted" column="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        position_id,position_name,organ_id,
+        description,status,sort,
+        salary_range,experience,education,
+        create_time,update_time,create_user,
+        update_user,deleted
+    </sql>
+</mapper>

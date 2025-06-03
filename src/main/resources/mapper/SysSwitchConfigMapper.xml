@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.module.system.mapper.SysSwitchConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.admin.module.system.entity.SysSwitchConfig">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="configName" column="config_name" jdbcType="VARCHAR"/>
+            <result property="configKey" column="config_key" jdbcType="VARCHAR"/>
+            <result property="configValue" column="config_value" jdbcType="VARCHAR"/>
+            <result property="remark" column="remark" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="createUser" column="create_user" jdbcType="BIGINT"/>
+            <result property="updateUser" column="update_user" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,config_name,config_key,
+        config_value,status,remark,
+        create_time,update_time,create_user,
+        update_user
+    </sql>
+</mapper>

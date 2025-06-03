@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.module.system.mapper.ScheduledJobLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.admin.module.system.entity.ScheduledJobLog">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="jobId" column="job_id" jdbcType="BIGINT"/>
+            <result property="jobName" column="job_name" jdbcType="VARCHAR"/>
+            <result property="beanName" column="bean_name" jdbcType="VARCHAR"/>
+            <result property="methodName" column="method_name" jdbcType="VARCHAR"/>
+            <result property="errorInfo" column="error_info" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="executeTime" column="execute_time" jdbcType="BIGINT"/>
+            <result property="startTime" column="start_time" jdbcType="TIMESTAMP"/>
+            <result property="endTime" column="end_time" jdbcType="TIMESTAMP"/>
+            <result property="createUser" column="create_user" jdbcType="BIGINT"/>
+            <result property="updateUser" column="update_user" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,job_id,job_name,
+        bean_name,method_name,error_info,
+        status,execute_time,start_time,
+        stop_time,create_user,update_user
+    </sql>
+</mapper>
