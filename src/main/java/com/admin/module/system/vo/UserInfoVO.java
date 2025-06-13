@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
@@ -26,6 +27,12 @@ public class UserInfoVO {
     @Schema(description = "用户昵称")
     private String realName;
 
+    @Schema(description = "手机号码")
+    private String phone;
+
+    @Schema(description = "用户邮箱")
+    private String email;
+
     @Schema(description = "用户头像地址")
     private String avatar;
 
@@ -34,4 +41,16 @@ public class UserInfoVO {
 
     @Schema(description = "用户权限标识集合")
     private Set<String> perms;
+
+    @Schema(description = "用户职位名称集合")
+    private Set<String> positions;
+
+    @Schema(description = "用户部门名称集合")
+    private Set<String> deptNames;
+
+    @Schema(description = "用户角色名称集合")
+    private Set<String> roleNames;
+
+    @Schema(description = "用户最后登录时间")
+    private LocalDateTime  lastLoginTime;
 }

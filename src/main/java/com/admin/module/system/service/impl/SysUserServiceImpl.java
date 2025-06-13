@@ -12,10 +12,7 @@ import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.dto.PasswordUpdateDTO;
 import com.admin.module.system.dto.UserAuthInfo;
 import com.admin.module.system.dto.UserInfoUpdateDTO;
-import com.admin.module.system.entity.SysOrganization;
-import com.admin.module.system.entity.SysRole;
-import com.admin.module.system.entity.SysUser;
-import com.admin.module.system.entity.SysUserRole;
+import com.admin.module.system.entity.*;
 import com.admin.module.system.form.UserForm;
 import com.admin.module.system.mapper.SysUserMapper;
 import com.admin.module.system.query.UserQuery;
@@ -36,6 +33,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,12 +56,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     private final SysRoleMenuService roleMenuService;
 
-    private final SysOrganizationService sysOrganizationService;
+    private final SysDeptService sysDeptService;
 
     private final PasswordEncoder passwordEncoder;
 
     private final PermissionService permissionService;
 
+    private final UserLoginLogService  userLoginLogService;
 
 
 
@@ -169,9 +168,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * @return
      */
     private Map<Long, String> buildDeptIdRoleNamesMap() {
-        List<SysOrganization> deptList = sysOrganizationService.list();
+        List<SysDept> deptList = sysDeptService.list();
         Map<Long, String> idNameMap = deptList.stream()
-                .collect(Collectors.toMap(SysOrganization::getId, SysOrganization::getOrganName));
+                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
         return idNameMap;
     }
 
@@ -475,13 +474,43 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userInfoVO.setUserId(user.getUserId());
         userInfoVO.setUsername(user.getUsername());
         userInfoVO.setRealName(user.getRealName());
+        userInfoVO.setPhone(user.getMobile());
+        userInfoVO.setEmail(user.getEmail());
         userInfoVO.setAvatar(user.getAvatar());
+        // 用户角色编码
         userInfoVO.setRoles(roleCodes);
 
+
         if (CollectionUtils.isNotEmpty(roleCodes)) {
+            // 用户权限标识
             Set<String> perms = permissionService.getRolePermsFromCache(roleCodes);
             userInfoVO.setPerms(perms);
+
+            // 角色名称
+            LambdaQueryWrapper<SysRole> roleQueryWrapper = new LambdaQueryWrapper<>();
+            roleQueryWrapper.in(SysRole::getRoleCode, roleCodes);
+            Set<String> roleNames = roleService.list(roleQueryWrapper).stream()
+                            .map(SysRole::getRoleName)
+                            .collect(Collectors.toSet());
+            userInfoVO.setRoleNames(roleNames);
         }
+
+        // 用户部门名称
+//        if (user.getOrganId() != null) {
+//            String deptName = sysDeptService.getById(user.getOrganId()).getDeptName();
+//            userInfoVO.setDeptNames(Set.of(deptName));
+//        }
+
+        // 用户最后登录时间
+        LambdaQueryWrapper<UserLoginLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserLoginLog::getUserId, user.getUserId());
+        wrapper.last("limit 1");
+        UserLoginLog userLoginLog = userLoginLogService.getOne(wrapper);
+        LocalDateTime lastLoginTime = userLoginLog.getLoginTime();
+        userInfoVO.setLastLoginTime(lastLoginTime);
+
+
+
 
         return userInfoVO;
     }
