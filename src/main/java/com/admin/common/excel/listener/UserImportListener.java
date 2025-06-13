@@ -6,11 +6,11 @@ import com.admin.common.excel.ImportResult;
 import com.admin.common.excel.ImportUserFailVO;
 import com.admin.common.excel.importvo.UserImportVO;
 import com.admin.common.util.SpringContextUtil;
-import com.admin.module.system.entity.SysOrganization;
+import com.admin.module.system.entity.SysDept;
 import com.admin.module.system.entity.SysRole;
 import com.admin.module.system.entity.SysUser;
 import com.admin.module.system.entity.SysUserRole;
-import com.admin.module.system.service.SysOrganizationService;
+import com.admin.module.system.service.SysDeptService;
 import com.admin.module.system.service.SysRoleService;
 import com.admin.module.system.service.SysUserRoleService;
 import com.admin.module.system.service.SysUserService;
@@ -39,7 +39,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     private final SysRoleService roleService;
 
-    private final SysOrganizationService organizationService;
+    private final SysDeptService organizationService;
 
     private final String encodeDefaultPassword;
 
@@ -83,7 +83,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         this.sysUserService = SpringContextUtil.getBean(SysUserService.class);
         this.userRoleService = SpringContextUtil.getBean(SysUserRoleService.class);
         this.roleService = SpringContextUtil.getBean(SysRoleService.class);
-        this.organizationService = SpringContextUtil.getBean(SysOrganizationService.class);
+        this.organizationService = SpringContextUtil.getBean(SysDeptService.class);
 
         this.encodeDefaultPassword = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
 
@@ -103,33 +103,33 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
                 .map(SysRole::getRoleName)
                 .collect(Collectors.toSet());
 
-        LambdaUpdateWrapper<SysOrganization> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(SysOrganization::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        List<SysOrganization> sysOrganizationList = organizationService.list(wrapper);
+        LambdaUpdateWrapper<SysDept> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(SysDept::getDeleted, DeletedEnum.NO_DELETE.getValue());
+        List<SysDept> sysOrganizationList = organizationService.list(wrapper);
 
         // 加载所有组织名称
         this.existingOrganNames = sysOrganizationList.stream()
-                .filter(organ ->  OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getOrganType()))
-                .map(SysOrganization::getOrganName)
+                .filter(organ ->  OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
+                .map(SysDept::getDeptName)
                 .collect(Collectors.toSet());
 
         // 加载所有部门名称
         this.existingDeptNames = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getOrganType()))
-                .map(SysOrganization::getOrganName)
+                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
+                .map(SysDept::getDeptName)
                 .collect(Collectors.toSet());
 
         // id 映射 机构名称
         this.parantIdOrganNameMap = sysOrganizationList.stream()
-                .filter(organ ->  OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getOrganType()))
-                .collect(Collectors.toMap(SysOrganization::getId, SysOrganization::getOrganName));
+                .filter(organ ->  OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
+                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
 
         // 机构-部门名称组合映射到id
         this.deptNameOrganIdMap = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getOrganType()))
+                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
                 .collect(Collectors.toMap(
-                        organ -> parantIdOrganNameMap.get(organ.getParentId()) + "-" + organ.getOrganName(),
-                        SysOrganization::getId));
+                        organ -> parantIdOrganNameMap.get(organ.getParentId()) + "-" + organ.getDeptName(),
+                        SysDept::getId));
 
     }
 

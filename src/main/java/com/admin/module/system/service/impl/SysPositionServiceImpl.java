@@ -1,18 +1,18 @@
 package com.admin.module.system.service.impl;
 
 import com.admin.module.system.mapper.SysPositionMapper;
-import com.admin.module.system.service.SysOrganizationService;
+import com.admin.module.system.service.SysDeptService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.admin.module.system.entity.SysOrganization;
+import com.admin.module.system.entity.SysDept;
 import com.admin.module.system.entity.SysPosition;
-import com.admin.module.system.entity.SysPositionOrganization;
+import com.admin.module.system.entity.SysPositionDept;
 import com.admin.module.system.form.PositionForm;
 import com.admin.module.system.query.PositionQuery;
 import com.admin.module.system.vo.PositionVO;
-import com.admin.module.system.service.SysPositionOrganizationService;
+import com.admin.module.system.service.SysPositionDeptService;
 import com.admin.module.system.service.SysPositionService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -34,9 +34,9 @@ import java.util.stream.Collectors;
 public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPosition>
     implements SysPositionService{
 
-    private final SysPositionOrganizationService positionOrganService;
+    private final SysPositionDeptService positionOrganService;
 
-    private final SysOrganizationService sysOrganizationService;
+    private final SysDeptService sysDeptService;
 
     /**
      * 岗位分页列表
@@ -90,10 +90,10 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
      */
     private Map<Long, String> getPositionIdOrganNameMap() {
         Map<Long, Long> positionIdOrganIdMap = positionOrganService.list().stream()
-                .collect(Collectors.toMap(SysPositionOrganization::getPositionId, SysPositionOrganization::getOrganId));
+                .collect(Collectors.toMap(SysPositionDept::getPositionId, SysPositionDept::getDeptId));
 
-        Map<Long, String> organIdOrganNameMap = sysOrganizationService.list().stream()
-                .collect(Collectors.toMap(SysOrganization::getId, SysOrganization::getOrganName));
+        Map<Long, String> organIdOrganNameMap = sysDeptService.list().stream()
+                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
 
         // 构建一个新 Map
         Map<Long, String> positionIdOrganNameMap = new HashMap<>();
@@ -125,7 +125,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
         SysPosition sysPosition = this.convertSysPosition(positionForm);
         boolean result = this.save(sysPosition);
         if (result && positionForm.getOrganId() != null) {
-            positionOrganService.saveSysPositionOrganization(sysPosition.getPositionId(), positionForm.getOrganId());
+            positionOrganService.saveSysPositionDept(sysPosition.getPositionId(), positionForm.getOrganId());
         }
         return result;
     }
@@ -161,7 +161,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
     public PositionForm getSysPositionDetail(Long id) {
         SysPosition sysPosition = this.getById(id);
 
-        Long organId = positionOrganService.getOrganId(id);
+        Long organId = positionOrganService.getDeptId(id);
         PositionForm  positionForm = new PositionForm();
         positionForm.setPositionId(sysPosition.getPositionId());
         positionForm.setPositionName(sysPosition.getPositionName());
@@ -186,7 +186,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
         SysPosition sysPosition = this.convertSysPosition(positionForm);
         boolean result = this.updateById(sysPosition);
         if (result) {
-            positionOrganService.updateSysPositionOrganization(positionForm.getPositionId(), positionForm.getOrganId());
+            positionOrganService.updateSysPositionDept(positionForm.getPositionId(), positionForm.getOrganId());
         }
         return result;
     }
@@ -202,7 +202,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
     public boolean deleteSysPosition(List<Long> ids) {
         boolean result = this.removeByIds(ids);
         if (result) {
-            positionOrganService.deleteSysPositionOrganization(ids);
+            positionOrganService.deleteSysPositionDept(ids);
         }
         return result;
     }
