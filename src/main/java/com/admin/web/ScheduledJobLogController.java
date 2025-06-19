@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "定时任务日志")
 @RestController
-@RequestMapping("/api/scheduledJobLog")
+@RequestMapping("/scheduledJobLog")
 @RequiredArgsConstructor
 public class ScheduledJobLogController {
 

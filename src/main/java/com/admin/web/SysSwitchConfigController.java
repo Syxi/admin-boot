@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "系统业务配置开关")
 @RequiredArgsConstructor
-@RequestMapping("/api/sysSwitchConfig")
+@RequestMapping("/sysSwitchConfig")
 @RestController
 public class SysSwitchConfigController {
 

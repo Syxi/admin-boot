@@ -25,7 +25,7 @@ import java.util.Set;
 @Tag(name = "菜单接口")
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/menu")
+@RequestMapping("/menu")
 public class SysMenuController {
 
     private final SysMenuService menuService;

@@ -29,7 +29,7 @@ import java.util.Base64;
 @Slf4j
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/auth")
 public class AuthController {
 
     private final AuthService authService;

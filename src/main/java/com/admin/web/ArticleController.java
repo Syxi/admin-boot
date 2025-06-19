@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Tag(name = "文章管理")
-@RequestMapping("/api/article")
+@RequestMapping("/article")
 @RequiredArgsConstructor
 @RestController
 public class ArticleController {

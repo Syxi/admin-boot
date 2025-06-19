@@ -19,7 +19,7 @@ import java.util.List;
 @Tag(name = "岗位管理")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/sysPosition")
+@RequestMapping("/sysPosition")
 public class SysPositionController {
 
     private final SysPositionService sysPositionService;

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "用户登录日志")
-@RequestMapping("/api")
+@RequestMapping("/log")
 @RestController
 @AllArgsConstructor
 public class LoginLogController {

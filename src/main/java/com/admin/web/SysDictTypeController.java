@@ -22,7 +22,7 @@ import java.util.List;
 @Tag(name = "字典类型接口")
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/dictType")
+@RequestMapping("/dictType")
 public class SysDictTypeController {
 
     private final SysDictTypeService dictTypeService;

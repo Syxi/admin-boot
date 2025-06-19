@@ -10,13 +10,7 @@ public class SecurityConstants {
     /**
      * 登录接口路径
      */
-    public static final String LOGIN_PATH = "/api/login";
-
-
-    /**
-     * 单账号登录，不能登录重复账号
-     */
-    public static final String REPEAT_LOGIN= "/api/repeatLogin";
+    public static final String LOGIN_PATH = "/auth/login";
 
 
     /**

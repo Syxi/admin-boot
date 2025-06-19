@@ -16,7 +16,7 @@ import java.util.List;
 
 @Tag(name = "部门机构")
 @RestController
-@RequestMapping("/api/dept")
+@RequestMapping("/dept")
 @AllArgsConstructor
 public class SysDeptController {
 

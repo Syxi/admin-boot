@@ -22,7 +22,7 @@ import java.util.List;
 @Tag(name = "字典项")
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/dictValue")
+@RequestMapping("/dictValue")
 public class SysDictValueController {
 
     private final SysDictValueService dictValueService;

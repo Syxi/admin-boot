@@ -19,7 +19,7 @@ import java.util.List;
 
 @Tag(name = "多媒体视频")
 @RequiredArgsConstructor
-@RequestMapping("/api/video")
+@RequestMapping("/video")
 @RestController
 public class VideosController {
 

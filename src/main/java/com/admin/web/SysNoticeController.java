@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Tag(name = "通知公告")
-@RequestMapping("/api/notice")
+@RequestMapping("/notice")
 @RequiredArgsConstructor
 @RestController
 public class SysNoticeController {

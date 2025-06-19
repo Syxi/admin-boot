@@ -23,7 +23,7 @@ import java.util.List;
 
 @Tag(name = "图片库接口")
 @RequiredArgsConstructor
-@RequestMapping("/api/image")
+@RequestMapping("/image")
 @RestController
 public class ImageController {
 
