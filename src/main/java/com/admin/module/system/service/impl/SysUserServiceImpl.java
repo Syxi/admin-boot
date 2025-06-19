@@ -474,7 +474,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userInfoVO.setUserId(user.getUserId());
         userInfoVO.setUsername(user.getUsername());
         userInfoVO.setRealName(user.getRealName());
-        userInfoVO.setPhone(user.getMobile());
+        userInfoVO.setGender(user.getGender());
+        userInfoVO.setMobile(user.getMobile());
         userInfoVO.setEmail(user.getEmail());
         userInfoVO.setAvatar(user.getAvatar());
         // 用户角色编码
@@ -482,16 +483,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
         if (CollectionUtils.isNotEmpty(roleCodes)) {
-            // 用户权限标识
-            Set<String> perms = permissionService.getRolePermsFromCache(roleCodes);
-            userInfoVO.setPerms(perms);
-
-            // 角色名称
+            // 角色集合
             LambdaQueryWrapper<SysRole> roleQueryWrapper = new LambdaQueryWrapper<>();
             roleQueryWrapper.in(SysRole::getRoleCode, roleCodes);
-            Set<String> roleNames = roleService.list(roleQueryWrapper).stream()
+            List<SysRole> roleList = roleService.list(roleQueryWrapper);
+
+            Set<Long> roleIds = roleList.stream()
+                    .map(SysRole::getRoleId)
+                    .collect(Collectors.toSet());
+
+            List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
+
+            // 用户权限标识
+            Set<String> permissions = menuService.selectMenuPerms(menuIds);
+            userInfoVO.setPerms(permissions);
+
+            // 角色名称
+            String roleNames = roleList.stream()
                             .map(SysRole::getRoleName)
-                            .collect(Collectors.toSet());
+                            .collect(Collectors.joining(","));
             userInfoVO.setRoleNames(roleNames);
         }
 
@@ -504,6 +514,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 用户最后登录时间
         LambdaQueryWrapper<UserLoginLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserLoginLog::getUserId, user.getUserId());
+        wrapper.orderByDesc(UserLoginLog::getLoginTime);
         wrapper.last("limit 1");
         UserLoginLog userLoginLog = userLoginLogService.getOne(wrapper);
         LocalDateTime lastLoginTime = userLoginLog.getLoginTime();
@@ -759,6 +770,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public boolean updateUserInfo(Long userId, UserInfoUpdateDTO userInfo) {
         SysUser sysUser = new SysUser();
         sysUser.setUserId(userId);
+        sysUser.setRealName(userInfo.getRealName());
+        sysUser.setGender(userInfo.getGender());
         sysUser.setMobile(userInfo.getMobile());
         sysUser.setEmail(userInfo.getEmail());
         return this.updateById(sysUser);

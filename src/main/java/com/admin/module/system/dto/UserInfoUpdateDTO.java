@@ -18,6 +18,9 @@ public class UserInfoUpdateDTO {
     @Schema(description = "用户昵称")
     private String realName;
 
+    @Schema(description = "性别")
+    private Integer gender;
+
     @Schema(description = "手机号")
     private String mobile;
 

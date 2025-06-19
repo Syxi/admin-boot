@@ -27,8 +27,11 @@ public class UserInfoVO {
     @Schema(description = "用户昵称")
     private String realName;
 
+    @Schema(description = "用户性别")
+    private Integer gender;
+
     @Schema(description = "手机号码")
-    private String phone;
+    private String mobile;
 
     @Schema(description = "用户邮箱")
     private String email;
@@ -43,13 +46,13 @@ public class UserInfoVO {
     private Set<String> perms;
 
     @Schema(description = "用户职位名称集合")
-    private Set<String> positions;
+    private String positions;
 
     @Schema(description = "用户部门名称集合")
-    private Set<String> deptNames;
+    private String deptNames;
 
     @Schema(description = "用户角色名称集合")
-    private Set<String> roleNames;
+    private String roleNames;
 
     @Schema(description = "用户最后登录时间")
     private LocalDateTime  lastLoginTime;
