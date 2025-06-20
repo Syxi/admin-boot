@@ -22,7 +22,7 @@ public class UserQuery extends BasePage {
     private String realName;
 
     @Schema(description = "部门id")
-    private Long organId;
+    private Long deptId;
 
     @Schema(description = "用户状态(1:正常;-1:禁用)")
     private Integer status;

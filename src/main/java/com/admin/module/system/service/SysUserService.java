@@ -126,12 +126,6 @@ public interface SysUserService extends IService<SysUser> {
      */
     ResultVO<Boolean> updatePassword(Long userId, PasswordUpdateDTO passwordUpdateDTO);
 
-    /**
-     * 个人信息
-     * @param userId
-     * @return
-     */
-    UserInfoUpdateDTO getUserInfoUpdateDTO(Long userId);
 
     /**
      * 更新个人信息

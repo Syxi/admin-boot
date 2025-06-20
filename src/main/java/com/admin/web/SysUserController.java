@@ -194,13 +194,6 @@ public class SysUserController {
         return sysUserService.updatePassword(userId, passwordUpdateDTO);
     }
 
-    @Operation(summary = "个人信息")
-    @GetMapping("/me")
-    public ResultVO<UserInfoUpdateDTO> getUserInfoUpdateDTO() {
-        Long userId = SecurityUtils.getUserId();
-        UserInfoUpdateDTO userInfo = sysUserService.getUserInfoUpdateDTO(userId);
-        return ResultVO.success(userInfo);
-    }
 
 
     @Operation(summary = "更新个人信息")

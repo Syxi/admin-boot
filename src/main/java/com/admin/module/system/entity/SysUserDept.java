@@ -1,20 +1,18 @@
 package com.admin.module.system.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 /**
- * 
+ * 用户和部门关联表
  * @TableName sys_user_dept
  */
 @TableName(value ="sys_user_dept")
 @Data
-public class SysUserDept implements Serializable {
+public class SysUserDept {
     /**
      * 
      */
@@ -34,13 +32,13 @@ public class SysUserDept implements Serializable {
     /**
      * 创建时间
      */
-    private LocalDateTime createTime;
+    private Date createTime;
 
     /**
      * 更新时间
      */
-    private LocalDateTime updateTime;
+    private Date updateTime;
 
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
+    public SysUserDept(Long userId, Long deptId) {
+    }
 }

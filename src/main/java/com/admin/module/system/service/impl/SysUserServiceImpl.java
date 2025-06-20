@@ -5,9 +5,9 @@ import com.admin.common.enums.DeletedEnum;
 import com.admin.common.enums.GenderEnum;
 import com.admin.common.enums.IBaseEnum;
 import com.admin.common.enums.StatusEnum;
+import com.admin.common.excel.export.UserExportVO;
 import com.admin.common.exception.CustomException;
 import com.admin.common.result.ResultVO;
-import com.admin.common.security.PermissionService;
 import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.dto.PasswordUpdateDTO;
 import com.admin.module.system.dto.UserAuthInfo;
@@ -18,7 +18,6 @@ import com.admin.module.system.mapper.SysUserMapper;
 import com.admin.module.system.query.UserQuery;
 import com.admin.module.system.service.*;
 import com.admin.module.system.vo.TransferVO;
-import com.admin.common.excel.export.UserExportVO;
 import com.admin.module.system.vo.UserInfoVO;
 import com.admin.module.system.vo.UserVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -60,9 +59,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     private final PasswordEncoder passwordEncoder;
 
-    private final PermissionService permissionService;
-
     private final UserLoginLogService  userLoginLogService;
+
+    private final SysUserDeptService sysUserDeptService;
 
 
 
@@ -87,9 +86,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 //            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
 //        }
         // 组织id
-        if (userQuery.getOrganId() != null) {
-            queryWrapper.eq(SysUser::getOrganId, userQuery.getOrganId());
-        }
+//        if (userQuery.getDeptId() != null) {
+//            queryWrapper.eq(SysUser::getOrganId, userQuery.getDeptId());
+//        }
         // 用户状态
         if (userQuery.getStatus() != null) {
             queryWrapper.eq(SysUser::getStatus, userQuery.getStatus());
@@ -106,7 +105,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         Map<Long, List<String>> userIdRoleNamesMap = this.buildUserIdRoleNamesMap();
 
         // dept 的id、name的关系存储在map中，key是id, name是value
-        Map<Long, String> deptIdNameMap = this.buildDeptIdRoleNamesMap();
+        Map<Long, String> deptIdNameMap = this.buildDeptIdDeptNamesMap();
+
+        // userId、deptId存储在map中，key是userId, value是deptId
+        Map<Long, Long> userIdDeptIdMap = this.buildUserIdDeptIdMap();
 
         IPage<UserVO> userVOIPage = pageData.convert(user -> {
             // user 转 userVO
@@ -116,10 +118,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             String roleNames = String.join(",", roleNameList);
             userVO.setRoleNames(roleNames);
 
-            if (user.getOrganId() != null) {
-                String organName = deptIdNameMap.get(user.getOrganId());
-                userVO.setOrganName(organName);
-            }
+            Long deptId = userIdDeptIdMap.get(user.getUserId());
+            String organName = deptIdNameMap.get(deptId);
+            userVO.setOrganName(organName);
 
             return userVO;
         });
@@ -167,13 +168,24 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * dept 的id、name的关系存储在map中，key是id, value是name
      * @return
      */
-    private Map<Long, String> buildDeptIdRoleNamesMap() {
+    private Map<Long, String> buildDeptIdDeptNamesMap() {
         List<SysDept> deptList = sysDeptService.list();
         Map<Long, String> idNameMap = deptList.stream()
                 .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
         return idNameMap;
     }
 
+
+    /**
+     * userId、deptIds存储在map中，key是userId, value是deptId
+     * @return
+     */
+    private Map<Long, Long> buildUserIdDeptIdMap() {
+        List<SysUserDept> userDeptList = sysUserDeptService.list();
+        Map<Long, Long> userIdDeptIdsMap = userDeptList.stream()
+                .collect(Collectors.toMap(SysUserDept::getUserId, SysUserDept::getDeptId));
+        return userIdDeptIdsMap;
+    }
 
 
     /**
@@ -226,12 +238,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setEmail(userForm.getEmail());
         user.setSort(userForm.getSort());
         user.setRemark(userForm.getRemark());
-        user.setOrganId(userForm.getOrganId());
         String password = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
         user.setPassword(password);
 
+        // 新增用户部门关联
+        sysUserDeptService.save(new SysUserDept(user.getUserId(), userForm.getDeptId()));
+
         // 新增用户
         boolean result = this.save(user);
+
         return result;
     }
 
@@ -280,7 +295,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setEmail(userForm.getEmail());
         user.setSort(userForm.getSort());
         user.setRemark(userForm.getRemark());
-        user.setOrganId(userForm.getOrganId());
+
+        // 更新用户部门关联
+        sysUserDeptService.updateByUserId(user.getUserId(), userForm.getDeptId());
+
         // 更新用户
         boolean result = this.updateById(user);
         return result;
@@ -309,7 +327,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userForm.setStatus(user.getStatus());
         userForm.setSort(user.getSort());
         userForm.setRemark(user.getRemark());
-        userForm.setOrganId(user.getOrganId());
+
+        Long deptId = sysUserDeptService.selectDeptId(userId);
+        if (deptId != null) {
+            userForm.setDeptId(deptId);
+        }
 
         // 获取角色id
         List<Long> roleIds = userRoleService.selectRoleIds(userId);
@@ -333,6 +355,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 删除用户角色关系
         if (result) {
             userRoleService.deleteBatchUserRole(userIds);
+            sysUserDeptService.deleteBatchByUserId(userIds);
         }
         return result;
     }
@@ -719,46 +742,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     }
 
-    /**
-     * 个人信息
-     *
-     * @param userId
-     * @return
-     */
-    @Override
-    public UserInfoUpdateDTO getUserInfoUpdateDTO(Long userId) {
-        SysUser sysUser = this.getById(userId);
-
-        UserInfoUpdateDTO userInfo = new UserInfoUpdateDTO();
-        userInfo.setUserId(sysUser.getUserId());
-        userInfo.setUsername(sysUser.getUsername());
-        userInfo.setRealName(sysUser.getRealName());
-        userInfo.setMobile(sysUser.getMobile());
-        userInfo.setEmail(sysUser.getEmail());
-        userInfo.setStatus(sysUser.getStatus());
-        userInfo.setSort(sysUser.getSort());
-        userInfo.setRemark(sysUser.getRemark());
-        userInfo.setCreateTime(sysUser.getCreateTime());
-
-        if (sysUser.getGender() != null) {
-            String genderLabel = IBaseEnum.getLabelByValue(sysUser.getGender(), GenderEnum.class);
-            userInfo.setGenderLabel(genderLabel);
-        }
-
-
-        // 角色名称
-        Map<Long, List<String>> userIdRoleNamesMap = this.buildUserIdRoleNamesMap();
-        List<String> roleNameList = userIdRoleNamesMap.getOrDefault(userId, Collections.emptyList());
-        String roleNames = String.join(",", roleNameList);
-        userInfo.setRoleNames(roleNames);
-
-        // 组织名称
-        Map<Long, String> organIdOrganNameMap = this.buildDeptIdRoleNamesMap();
-        String organName = organIdOrganNameMap.get(sysUser.getOrganId());
-        userInfo.setOrganName(organName);
-
-        return userInfo;
-    }
 
     /**
      * 更新个人信息
