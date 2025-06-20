@@ -5,11 +5,14 @@
 <mapper namespace="com.admin.module.system.mapper.SysUserDeptMapper">
 
     <resultMap id="BaseResultMap" type="com.admin.module.system.entity.SysUserDept">
-            <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="roleId" column="role_id" jdbcType="BIGINT"/>
-            <result property="orgId" column="org_id" jdbcType="BIGINT"/>
-            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
-            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <id property="id" column="id" />
+            <result property="userId" column="user_id" />
+            <result property="deptId" column="dept_id" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
     </resultMap>
 
+    <sql id="Base_Column_List">
+        id,user_id,dept_id,create_time,update_time
+    </sql>
 </mapper>
