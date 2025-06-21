@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
 * @author sy
-* @description 针对表【sys_position_organization(岗位和组织关联表)】的数据库操作Service
+* @description 针对表【sys_position_dept(岗位和组织关联表)】的数据库操作Service
 * @createDate 2024-05-31 14:51:24
 */
 public interface SysPositionDeptService extends IService<SysPositionDept> {

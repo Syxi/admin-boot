@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 /**
 * @author sy
-* @description 针对表【sys_organization】的数据库操作Service实现
+* @description 针对表【sys_dept】的数据库操作Service实现
 * @createDate 2024-05-06 10:34:03
 */
 
@@ -95,7 +95,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
 
 
     /**
-     * SysOrganization 转换为 OrganizationVO
+     * SysDept 转换为 DeptVO
      * @param sysdept
      * @return
      */
@@ -144,14 +144,8 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
         }
 
         List<OptionVO> optionVOS = deptVOS.stream()
-                .map(org -> this.convertToOption(org))
+                .map(dept -> this.convertToOption(dept))
                 .collect(Collectors.toList());
-//        for (SysOrganization organization : organizationList) {
-//            if (organization.getParentId() == 0L) {
-//                OrganizationVO organizationVO = this.convertToOrganVO(organization);
-//                organizationVO.setChildren(organization);
-//            }
-//        }
 
         return optionVOS;
     }
@@ -161,7 +155,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
 
 
     /**
-     * OrganizationVO 转 Option
+     * DeptVO 转 Option
      * @param deptVO
      * @return
      */
@@ -276,7 +270,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
 
 
     /**
-     * OrganizationForm 转换 SysOrganization
+     * DeptForm 转换 SysDept
      * @param deptForm
      * @return
      */

@@ -7,7 +7,7 @@
     <resultMap id="BaseResultMap" type="com.admin.module.system.entity.SysPositionDept">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="positionId" column="position_id" jdbcType="BIGINT"/>
-            <result property="deptId" column="organ_id" jdbcType="BIGINT"/>
+            <result property="deptId" column="dept_id" jdbcType="BIGINT"/>
     </resultMap>
 
 </mapper>

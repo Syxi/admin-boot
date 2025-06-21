@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 /**
  * 岗位和组织关联表
- * @TableName sys_position_organization
+ * @TableName sys_position_dept
  */
 @TableName(value ="sys_position_dept")
 @Data

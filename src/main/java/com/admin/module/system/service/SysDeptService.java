@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
 * @author sy
-* @description 针对表【sys_organization】的数据库操作Service
+* @description 针对表【sys_dept】的数据库操作Service
 * @createDate 2024-05-08 11:16:36
 */
 public interface SysDeptService extends IService<SysDept> {
