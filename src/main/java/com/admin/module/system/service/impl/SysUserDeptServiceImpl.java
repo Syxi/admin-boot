@@ -30,7 +30,11 @@ public class SysUserDeptServiceImpl extends ServiceImpl<SysUserDeptMapper, SysUs
         LambdaUpdateWrapper<SysUserDept> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SysUserDept::getUserId, userId);
         updateWrapper.set(SysUserDept::getDeptId, deptId);
-        this.update(updateWrapper);
+
+        boolean result = this.update(updateWrapper);
+        if (!result) {
+            this.save(new SysUserDept(userId, deptId));
+        }
     }
 
     /**

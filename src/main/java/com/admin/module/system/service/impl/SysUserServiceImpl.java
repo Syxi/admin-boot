@@ -85,10 +85,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 //        if (StringUtils.isNotEmpty(userQuery.getRealName())) {
 //            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
 //        }
-        // 组织id
-//        if (userQuery.getDeptId() != null) {
-//            queryWrapper.eq(SysUser::getOrganId, userQuery.getDeptId());
-//        }
         // 用户状态
         if (userQuery.getStatus() != null) {
             queryWrapper.eq(SysUser::getStatus, userQuery.getStatus());
@@ -119,8 +115,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             userVO.setRoleNames(roleNames);
 
             Long deptId = userIdDeptIdMap.get(user.getUserId());
-            String organName = deptIdNameMap.get(deptId);
-            userVO.setOrganName(organName);
+            String deptName = deptIdNameMap.get(deptId);
+            userVO.setDeptName(deptName);
 
             return userVO;
         });
@@ -170,6 +166,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     private Map<Long, String> buildDeptIdDeptNamesMap() {
         List<SysDept> deptList = sysDeptService.list();
+        if (CollectionUtils.isEmpty(deptList)) {
+            return Collections.emptyMap();
+        }
         Map<Long, String> idNameMap = deptList.stream()
                 .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
         return idNameMap;
@@ -182,6 +181,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     private Map<Long, Long> buildUserIdDeptIdMap() {
         List<SysUserDept> userDeptList = sysUserDeptService.list();
+        if (CollectionUtils.isEmpty(userDeptList)) {
+            return Collections.emptyMap();
+        }
         Map<Long, Long> userIdDeptIdsMap = userDeptList.stream()
                 .collect(Collectors.toMap(SysUserDept::getUserId, SysUserDept::getDeptId));
         return userIdDeptIdsMap;
@@ -435,6 +437,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // User 转 UserAuthInfo
         UserAuthInfo userAuthInfo = this.convertToUserAuthInfo(user);
 
+        // 部门
+        Long deptId = sysUserDeptService.selectDeptId(user.getUserId());
+        userAuthInfo.setDeptId(deptId);
+
         // 用户角色关联表
         List<SysUserRole> userRoleList = userRoleService.selectUserRoleList(user.getUserId());
         if (CollectionUtils.isNotEmpty(userRoleList)) {
@@ -458,7 +464,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             }
 
 
-            // 根据 roleId, 获取 menuIds
+            // 菜单权限
             List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
             if (CollectionUtils.isNotEmpty(menuIds)) {
                 // 菜单权限列表
@@ -529,10 +535,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         // 用户部门名称
-//        if (user.getOrganId() != null) {
-//            String deptName = sysDeptService.getById(user.getOrganId()).getDeptName();
-//            userInfoVO.setDeptNames(Set.of(deptName));
-//        }
+
 
         // 用户最后登录时间
         LambdaQueryWrapper<UserLoginLog> wrapper = new LambdaQueryWrapper<>();
@@ -565,7 +568,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userAuthInfo.setPassword(user.getPassword());
         userAuthInfo.setRealName(user.getRealName());
         userAuthInfo.setStatus(user.getStatus());
-        userAuthInfo.setOrganId(user.getOrganId());
         return userAuthInfo;
     }
 
