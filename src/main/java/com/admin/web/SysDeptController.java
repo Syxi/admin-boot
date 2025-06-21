@@ -24,9 +24,9 @@ public class SysDeptController {
 
     @Operation(summary = "部门树")
     @GetMapping("/tree")
-    public ResultVO<List<DeptVO>> deptTree(String keyWord) {
-        List<DeptVO> organizationList = sysDeptService.deptTree(keyWord);
-        return ResultVO.success(organizationList);
+    public ResultVO<List<DeptVO>> deptTree(@RequestParam(required = false, name = "ketWord") String keyWord) {
+        List<DeptVO> deptList = sysDeptService.deptTree(keyWord);
+        return ResultVO.success(deptList);
     }
 
 

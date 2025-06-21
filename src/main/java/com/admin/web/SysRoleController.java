@@ -61,7 +61,7 @@ public class SysRoleController {
 
     @Operation(summary = "角色详情")
     @GetMapping("/detail/{roleId}")
-    public ResultVO<RoleVO> getRoleDetail(@PathVariable Long roleId) {
+    public ResultVO<RoleVO> getRoleDetail(@PathVariable("roleId") Long roleId) {
         RoleVO roleVO = roleService.getRoleDetail(roleId);
         return ResultVO.success(roleVO);
     }
