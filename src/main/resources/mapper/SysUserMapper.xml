@@ -9,7 +9,6 @@
             <result property="username" column="username" jdbcType="VARCHAR"/>
             <result property="password" column="password" jdbcType="VARCHAR"/>
             <result property="realName" column="real_name" jdbcType="VARCHAR"/>
-            <result property="organId" column="organ_id" jdbcType="BIGINT"/>
             <result property="gender" column="gender" jdbcType="TINYINT"/>
             <result property="avatar" column="avatar" jdbcType="VARCHAR"/>
             <result property="mobile" column="mobile" jdbcType="VARCHAR"/>

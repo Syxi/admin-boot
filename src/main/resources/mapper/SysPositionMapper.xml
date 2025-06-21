@@ -20,11 +20,4 @@
             <result property="deleted" column="deleted" jdbcType="TINYINT"/>
     </resultMap>
 
-    <sql id="Base_Column_List">
-        position_id,position_name,organ_id,
-        description,status,sort,
-        salary_range,experience,education,
-        create_time,update_time,create_user,
-        update_user,deleted
-    </sql>
 </mapper>

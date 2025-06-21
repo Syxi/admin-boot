@@ -17,7 +17,7 @@ public class PositionVO {
     /**
      * 所属组织部门
      */
-    private String organName;
+    private String deptName;
 
     /**
      * 岗位描述

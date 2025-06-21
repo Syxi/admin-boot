@@ -23,7 +23,7 @@ public class UserAuthInfo {
     private Integer status;
 
     // 组织id
-    private Long organId;
+    private Long deptId;
 
     // 数据权限范围
     private Integer dataScope;

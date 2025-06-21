@@ -33,7 +33,7 @@ public class SysUserDetails implements UserDetails {
 
     private String password;
 
-    private Long organId;
+    private Long deptId;
 
     private Integer dataScope;
 
@@ -67,7 +67,7 @@ public class SysUserDetails implements UserDetails {
         this.authorities = authorities;
         this.username = userAuthInfo.getUsername();
         this.password = userAuthInfo.getPassword();
-        this.organId = userAuthInfo.getOrganId();
+        this.deptId = userAuthInfo.getDeptId();
         this.dataScope = userAuthInfo.getDataScope();
         this.permissions = userAuthInfo.getPermissions();
         this.enabled = ObjectUtils.nullSafeEquals(userAuthInfo.getStatus(), StatusEnum.ENABLE.getValue());

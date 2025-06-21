@@ -70,11 +70,11 @@ public class SecurityUtils {
 
 
     /**
-     * 获取组织id
+     * 获取部门id
      * @return
      */
-    public static Long getOrganId() {
-        return getCurrentUser().map(SysUserDetails::getOrganId).orElse(null);
+    public static Long getDeptId() {
+        return getCurrentUser().map(SysUserDetails::getDeptId).orElse(null);
     }
 
 

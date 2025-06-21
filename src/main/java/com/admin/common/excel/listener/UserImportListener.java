@@ -39,7 +39,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     private final SysRoleService roleService;
 
-    private final SysDeptService organizationService;
+    private final SysDeptService sysDeptService;
 
     private final String encodeDefaultPassword;
 
@@ -83,7 +83,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         this.sysUserService = SpringContextUtil.getBean(SysUserService.class);
         this.userRoleService = SpringContextUtil.getBean(SysUserRoleService.class);
         this.roleService = SpringContextUtil.getBean(SysRoleService.class);
-        this.organizationService = SpringContextUtil.getBean(SysDeptService.class);
+        this.sysDeptService = SpringContextUtil.getBean(SysDeptService.class);
 
         this.encodeDefaultPassword = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
 
@@ -105,7 +105,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
         LambdaUpdateWrapper<SysDept> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(SysDept::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        List<SysDept> sysOrganizationList = organizationService.list(wrapper);
+        List<SysDept> sysOrganizationList = sysDeptService.list(wrapper);
 
         // 加载所有组织名称
         this.existingOrganNames = sysOrganizationList.stream()
@@ -232,7 +232,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         user.setMobile(userImportVO.getMobile());
         user.setEmail(userImportVO.getEmail());
         Long organId = deptNameOrganIdMap.get(userImportVO.getOrganName() + "-" + userImportVO.getDeptName());
-        user.setOrganId(organId);
+//        user.setOrganId(organId);
         user.setStatus(StatusEnum.ENABLE.getValue());
         return user;
     }

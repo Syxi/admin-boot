@@ -85,7 +85,7 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
             case ALL:
                 return where;
             case ORGANIZATION:
-                orgId = SecurityUtils.getOrganId();
+                orgId = SecurityUtils.getDeptId();
                 appendSqlStr = orgColumnName + StringPool.EQUALS + orgId;
                 break;
             case CREATE_USER:
@@ -93,7 +93,7 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
                 appendSqlStr = userColumnName + StringPool.EQUALS + userId;
                 break;
             default:
-                orgId = SecurityUtils.getOrganId();
+                orgId = SecurityUtils.getDeptId();
                 appendSqlStr = orgColumnName + " IN ( SELECT id FROM sys_organization where id = " + orgId + " OR FIND_IN_SET(" + orgId + ", tree_path) )";
                 break;
         }

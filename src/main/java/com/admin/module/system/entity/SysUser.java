@@ -41,11 +41,6 @@ public class SysUser {
     @TableField(value = "real_name")
     private String realName;
 
-    /**
-     * 组织id
-     */
-    @TableField(value = "organ_id")
-    private Long organId;
 
     /**
      * 性别((1:男;2:女))

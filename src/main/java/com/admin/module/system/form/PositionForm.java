@@ -15,7 +15,7 @@ public class PositionForm {
     /**
      * 所属组织部门
      */
-    private Long organId;
+    private Long deptId;
 
     /**
      * 岗位描述

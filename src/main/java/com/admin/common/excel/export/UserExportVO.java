@@ -46,7 +46,7 @@ public class UserExportVO {
 
     @ExcelProperty(value = "部门名称")
     @ColumnWidth(20)
-    private String organName;
+    private String deptName;
 
     @ExcelProperty(value = "创建时间")
     @DateTimeFormat("yyyy-MM-dd")

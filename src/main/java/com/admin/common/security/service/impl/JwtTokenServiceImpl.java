@@ -75,7 +75,7 @@ public class JwtTokenServiceImpl implements TokenService {
         // 添加用户信息到 claims
         claims.put(JwtClaimConstants.USER_ID, sysUserDetails.getUserId());
         claims.put(JwtClaimConstants.USER_NAME, claims.getSubject());
-        claims.put(JwtClaimConstants.ORG_ID, sysUserDetails.getOrganId());
+        claims.put(JwtClaimConstants.ORG_ID, sysUserDetails.getDeptId());
         claims.put(JwtClaimConstants.DATA_SCOPE, sysUserDetails.getDataScope());
 
         // claims 中添加角色信息

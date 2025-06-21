@@ -56,7 +56,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
         IPage<PositionVO> positionVOIPage = sysPositionIPage.convert(sysPosition -> {
             PositionVO positionVO = this.convertPositionVO(sysPosition);
             String organName = this.getPositionIdOrganNameMap().get(sysPosition.getPositionId());
-            positionVO.setOrganName(organName);
+            positionVO.setDeptName(organName);
             return positionVO;
         });
 
@@ -124,8 +124,8 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
     public boolean saveSysPosition(PositionForm positionForm) {
         SysPosition sysPosition = this.convertSysPosition(positionForm);
         boolean result = this.save(sysPosition);
-        if (result && positionForm.getOrganId() != null) {
-            positionOrganService.saveSysPositionDept(sysPosition.getPositionId(), positionForm.getOrganId());
+        if (result && positionForm.getDeptId() != null) {
+            positionOrganService.saveSysPositionDept(sysPosition.getPositionId(), positionForm.getDeptId());
         }
         return result;
     }
@@ -165,7 +165,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
         PositionForm  positionForm = new PositionForm();
         positionForm.setPositionId(sysPosition.getPositionId());
         positionForm.setPositionName(sysPosition.getPositionName());
-        positionForm.setOrganId(organId);
+        positionForm.setDeptId(organId);
         positionForm.setDescription(sysPosition.getDescription());
         positionForm.setStatus(sysPosition.getStatus());
         positionForm.setSort(sysPosition.getSort());
@@ -186,7 +186,7 @@ public class SysPositionServiceImpl extends ServiceImpl<SysPositionMapper, SysPo
         SysPosition sysPosition = this.convertSysPosition(positionForm);
         boolean result = this.updateById(sysPosition);
         if (result) {
-            positionOrganService.updateSysPositionDept(positionForm.getPositionId(), positionForm.getOrganId());
+            positionOrganService.updateSysPositionDept(positionForm.getPositionId(), positionForm.getDeptId());
         }
         return result;
     }

@@ -48,7 +48,7 @@ public class UserVO {
     private String remark;
 
     @Schema(description = "部门名称")
-    private String organName;
+    private String deptName;
 
     @Schema(description = "角色名称，多个用英文逗号(,)分隔")
     private String roleNames;

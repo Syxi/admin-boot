@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 
- * @TableName sys_organization
+ * @TableName sys_dept
  */
 @TableName(value ="sys_dept")
 @Data
