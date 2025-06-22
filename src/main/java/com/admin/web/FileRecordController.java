@@ -158,7 +158,7 @@ public class FileRecordController {
 
     @Operation(summary = "检查文件转换是否完成")
     @GetMapping("/checkFileConvert/{id}")
-    public ResultVO<Integer> checkFileConvertStatus(@PathVariable Long id) {
+    public ResultVO<Integer> checkFileConvertStatus(@PathVariable("id") Long id) {
         Integer result = fileRecordService.checkFileConvertStatus(id);
         return  ResultVO.success(result);
     }
