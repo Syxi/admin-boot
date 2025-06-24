@@ -159,14 +159,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return
      */
     boolean isExistsRole(RoleForm roleForm) {
-        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<SysRole> queryWrapper = new LambdaQueryWrapper<>();
         if (roleForm.getRoleId() != null) {
-            wrapper.ne(SysRole::getRoleId, roleForm.getRoleId());
+            queryWrapper.ne(SysRole::getRoleId, roleForm.getRoleId());
         }
-        wrapper.eq(SysRole::getRoleName, roleForm.getRoleName());
-        wrapper.eq(SysRole::getRoleCode, roleForm.getRoleCode());
-        wrapper.eq(SysRole::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        boolean count =  this.exists(wrapper);
+        queryWrapper.and(wrapper -> wrapper
+                        .eq(SysRole::getRoleName, roleForm.getRoleName())
+                        .or()
+                        .eq(SysRole::getRoleCode, roleForm.getRoleCode()));
+        queryWrapper.eq(SysRole::getDeleted, DeletedEnum.NO_DELETE.getValue());
+        boolean count =  this.exists(queryWrapper);
         return count;
     }
 
