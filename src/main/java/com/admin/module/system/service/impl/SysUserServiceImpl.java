@@ -72,6 +72,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public IPage<UserVO> selectUserPage(UserQuery userQuery) {
+        List<SysUserDept> userDeptList = sysUserDeptService.list();
+
+        Map<Long, List<Long>> deptIdUserIdsMap = buildDeptIdUserIdListMap(userDeptList);
+
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         // 不是管理员，不显示 admin
         if (!SecurityUtils.isAdmin()) {
@@ -82,9 +86,20 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             queryWrapper.like(SysUser::getUsername, userQuery.getUsername())
                     .or().like(SysUser::getRealName, userQuery.getUsername());
         }
-//        if (StringUtils.isNotEmpty(userQuery.getRealName())) {
-//            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
-//        }
+        // 真实姓名
+        if (StringUtils.isNotEmpty(userQuery.getRealName())) {
+            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
+        }
+        // 部门
+        if (userQuery.getDeptId() != null) {
+            List<Long> userIds = deptIdUserIdsMap.get(userQuery.getDeptId());
+            if (CollectionUtils.isNotEmpty(userIds)) {
+                queryWrapper.in(SysUser::getUserId, userIds);
+            } else {
+                // 返回一个带分页信息的空对象
+                return new Page<>(userQuery.getPage(), userQuery.getLimit());
+            }
+        }
         // 用户状态
         if (userQuery.getStatus() != null) {
             queryWrapper.eq(SysUser::getStatus, userQuery.getStatus());
@@ -104,7 +119,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         Map<Long, String> deptIdNameMap = this.buildDeptIdDeptNamesMap();
 
         // userId、deptId存储在map中，key是userId, value是deptId
-        Map<Long, Long> userIdDeptIdMap = this.buildUserIdDeptIdMap();
+        Map<Long, Long> userIdDeptIdMap = this.buildUserIdDeptIdMap(userDeptList);
 
         IPage<UserVO> userVOIPage = pageData.convert(user -> {
             // user 转 userVO
@@ -179,14 +194,29 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * userId、deptIds存储在map中，key是userId, value是deptId
      * @return
      */
-    private Map<Long, Long> buildUserIdDeptIdMap() {
-        List<SysUserDept> userDeptList = sysUserDeptService.list();
+    private Map<Long, Long> buildUserIdDeptIdMap(List<SysUserDept> userDeptList) {
         if (CollectionUtils.isEmpty(userDeptList)) {
             return Collections.emptyMap();
         }
-        Map<Long, Long> userIdDeptIdsMap = userDeptList.stream()
+        Map<Long, Long> userIdDeptIdMap = userDeptList.stream()
                 .collect(Collectors.toMap(SysUserDept::getUserId, SysUserDept::getDeptId));
-        return userIdDeptIdsMap;
+        return userIdDeptIdMap;
+    }
+
+
+    /**
+     * userId、deptIds存储在map中，key是deptId, value是userIds
+     * @return
+     */
+    private Map<Long, List<Long>> buildDeptIdUserIdListMap(List<SysUserDept> userDeptList) {
+        if (CollectionUtils.isEmpty(userDeptList)) {
+            return Collections.emptyMap();
+        }
+        Map<Long, List<Long>> deptIdUserIdListMap = userDeptList.stream()
+                .collect(Collectors.groupingBy(
+                        SysUserDept::getDeptId,
+                        Collectors.mapping(SysUserDept::getUserId, Collectors.toList())));
+        return deptIdUserIdListMap;
     }
 
 
@@ -243,11 +273,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         String password = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
         user.setPassword(password);
 
-        // 新增用户部门关联
-        sysUserDeptService.save(new SysUserDept(user.getUserId(), userForm.getDeptId()));
-
         // 新增用户
         boolean result = this.save(user);
+
+        // 新增用户部门关联
+        sysUserDeptService.save(new SysUserDept(user.getUserId(), userForm.getDeptId()));
 
         return result;
     }
@@ -298,11 +328,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setSort(userForm.getSort());
         user.setRemark(userForm.getRemark());
 
+        // 更新用户
+        boolean result = this.updateById(user);
+
         // 更新用户部门关联
         sysUserDeptService.updateByUserId(user.getUserId(), userForm.getDeptId());
 
-        // 更新用户
-        boolean result = this.updateById(user);
         return result;
     }
 
@@ -587,6 +618,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         wrapper.groupBy(SysUser::getUserId);
         List<SysUser> userList = this.list(wrapper);
 
+        // userId 和 deptId 映射
+        List<SysUserDept> sysUserDeptList = sysUserDeptService.list();
+        Map<Long, Long> userIdDeptIdMap = buildUserIdDeptIdMap(sysUserDeptList);
+
+        // deptId 和 deptName 映射
+        List<SysDept> deptList = sysDeptService.list();
+        Map<Long, String> deptIdNameMap = deptList.stream()
+                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
+
+
+
         // userId 和 roleNames 映射
         Map<Long, List<String>> userIdRoleNamesMap = buildUserIdToRoleNamesMapping();
 
@@ -596,6 +638,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     // 角色名称
                     List<String> roleNames = userIdRoleNamesMap.getOrDefault(userExportVO.getUserId(), Collections.emptyList());
                     userExportVO.setRoleNames(String.join(",", roleNames));
+
+                    // 部门名称
+                    Long deptId = userIdDeptIdMap.get(userExportVO.getUserId());
+                    if (deptId != null) {
+                        String deptName = deptIdNameMap.getOrDefault(deptId, "");
+                        userExportVO.setDeptName(deptName);
+                    }
                 })
                 .collect(toList());
 
