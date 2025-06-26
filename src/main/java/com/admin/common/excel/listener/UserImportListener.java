@@ -6,18 +6,13 @@ import com.admin.common.excel.ImportResult;
 import com.admin.common.excel.ImportUserFailVO;
 import com.admin.common.excel.importvo.UserImportVO;
 import com.admin.common.util.SpringContextUtil;
-import com.admin.module.system.entity.SysDept;
-import com.admin.module.system.entity.SysRole;
-import com.admin.module.system.entity.SysUser;
-import com.admin.module.system.entity.SysUserRole;
-import com.admin.module.system.service.SysDeptService;
-import com.admin.module.system.service.SysRoleService;
-import com.admin.module.system.service.SysUserRoleService;
-import com.admin.module.system.service.SysUserService;
+import com.admin.module.system.entity.*;
+import com.admin.module.system.service.*;
 import com.alibaba.excel.context.AnalysisContext;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +35,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     private final SysRoleService roleService;
 
     private final SysDeptService sysDeptService;
+
+    private final SysUserDeptService sysUserDeptService;
 
     private final String encodeDefaultPassword;
 
@@ -71,8 +68,15 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     // username和 roleNames的一对多关系
     Map<String, List<String>> usernameRoleNamesMap = new HashMap<>();
 
+    // 用户Id和部门id关系
+    private Map<Long, Long> userIdDeptIdMap = new HashMap<>();
+
+    private List<UserImportVO> importVOList = new ArrayList<>();
+
     // 校验结果列表
     List<ImportUserFailVO> userFailVOList = new ArrayList<>();
+
+
 
 
 
@@ -84,6 +88,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         this.userRoleService = SpringContextUtil.getBean(SysUserRoleService.class);
         this.roleService = SpringContextUtil.getBean(SysRoleService.class);
         this.sysDeptService = SpringContextUtil.getBean(SysDeptService.class);
+        this.sysUserDeptService = SpringContextUtil.getBean(SysUserDeptService.class);
 
         this.encodeDefaultPassword = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
 
@@ -203,6 +208,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
                 usernameRoleNamesMap.computeIfAbsent(userName, k -> new ArrayList<>()).addAll(roleNameList);
             }
 
+            importVOList.add(userImportVO);
+
             validCount++;
 
         } else {
@@ -231,11 +238,15 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         user.setRealName(userImportVO.getRealName());
         user.setMobile(userImportVO.getMobile());
         user.setEmail(userImportVO.getEmail());
-        Long organId = deptNameOrganIdMap.get(userImportVO.getOrganName() + "-" + userImportVO.getDeptName());
-//        user.setOrganId(organId);
+        Long deptId = deptNameOrganIdMap.get(userImportVO.getOrganName() + "-" + userImportVO.getDeptName());
+        if (deptId != null) {
+            // 这里暂时不保存，只记录映射关系，user.getUserId()是数据库自动生成，user.getUserId()现在还是null
+            userIdDeptIdMap.put(user.getUserId(), deptId);
+        }
         user.setStatus(StatusEnum.ENABLE.getValue());
         return user;
     }
+
 
 
     /**
@@ -254,13 +265,38 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
         if (result) {
             // userId 和 userName映射集合
-            Map<Long, String> userIdUserNameMap = sysUserService.list().stream()
+            List<SysUser> sysUserList = sysUserService.list();
+            Map<Long, String> userIdUserNameMap = sysUserList.stream()
                     .collect(Collectors.toMap(SysUser::getUserId, SysUser::getUsername));
 
             // 将用户和角色的映射关系转换为一个 SysUserRole 列表
             userRoleList = getUserRoleList(userIdUserNameMap, roleIdRoleNameMap);
             // 批量保存用户角色关联表
-            userRoleService.saveBatch(userRoleList);
+           if (CollectionUtils.isNotEmpty(userRoleList)) {
+               userRoleService.saveBatch(userRoleList);
+           }
+
+           Map<String, Long> usernameToUserIdMap = sysUserList.stream()
+                   .collect(Collectors.toMap(SysUser::getUsername, SysUser::getUserId));
+
+           // 构建userId -> deptId 映射关系
+            List<SysUserDept> userDeptList = new ArrayList<>();
+           for (UserImportVO userImportVO : importVOList) {
+               String userName = userImportVO.getUsername();
+               String deptName = userImportVO.getDeptName();
+               String organName = userImportVO.getOrganName();
+
+               Long deptId = deptNameOrganIdMap.get(organName + "-" + deptName);
+               Long userId = usernameToUserIdMap.get(userName);
+
+               if (deptId != null && userId != null) {
+                   userDeptList.add(new SysUserDept(userId, deptId));
+               }
+           }
+
+           if (CollectionUtils.isNotEmpty(userDeptList)) {
+               sysUserDeptService.saveBatch(userDeptList);
+           }
         }
 
 
