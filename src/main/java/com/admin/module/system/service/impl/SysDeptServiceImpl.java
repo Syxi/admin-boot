@@ -9,8 +9,8 @@ import com.admin.module.system.form.DeptForm;
 import com.admin.module.system.mapper.SysDeptMapper;
 import com.admin.module.system.service.SysDeptService;
 import com.admin.module.system.service.SysPositionDeptService;
-import com.admin.module.system.vo.OptionVO;
 import com.admin.module.system.vo.DeptVO;
+import com.admin.module.system.vo.OptionVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -20,10 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -46,52 +43,89 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
      * @return
      */
     @Override
-    public List<DeptVO> deptTree(String searchKeyWord) {
+    public List<DeptVO> deptTree(String keyWord) {
         // 组织列表
         LambdaQueryWrapper<SysDept> queryWrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.isNotBlank(searchKeyWord)) {
-            queryWrapper.like(SysDept::getDeptName, searchKeyWord);
-        }
+//        if (StringUtils.isNotBlank(keyWord)) {
+//            queryWrapper.like(SysDept::getDeptName, keyWord);
+//        }
         queryWrapper.orderByAsc(SysDept::getSort);
         List<SysDept> deptList = this.list(queryWrapper);
 
+        // 如果没有结果，直接返回空列表
+        if (CollectionUtils.isEmpty(deptList)) {
+            return Collections.emptyList();
+        }
+
+        // 如果没有关键词，直接构建整个树
+        if (StringUtils.isBlank(keyWord)) {
+            return buildDeptTree(deptList);
+        }
+
+        // 筛选出名称匹配的部门
+        List<SysDept> matchedDepts = deptList.stream()
+                .filter(dept -> dept.getDeptName().contains(keyWord))
+                .collect(Collectors.toList());
+
+        if (CollectionUtils.isEmpty(matchedDepts)) {
+            return Collections.emptyList();
+        }
+
+        // 收集所有匹配节点及其祖先节点 ID
+        Set<Long> idsToShow = new HashSet<>();
+        for (SysDept dept : matchedDepts) {
+            Long currentId = dept.getId();
+            idsToShow.add(currentId);
+
+            String treePath = dept.getTreePath();
+            if (StringUtils.isNotBlank(treePath)) {
+                Arrays.stream(treePath.split(","))
+                        .map(Long::valueOf)
+                        .forEach(idsToShow::add);
+            }
+        }
+
+        // 过滤出需要展示的部门列表
+        List<SysDept> filteredDeptList = deptList.stream()
+                .filter(dept -> idsToShow.contains(dept.getId()))
+                .collect(Collectors.toList());
+
+        return buildDeptTree(filteredDeptList);
+    }
 
 
-        // 从根节点，递归添加子列表
+    private List<DeptVO> buildDeptTree(List<SysDept> deptList) {
+        // 构建 parentId -> 子部门映射
+        Map<Long, List<SysDept>> childrenMap = new HashMap<>();
+        for (SysDept dept : deptList) {
+            childrenMap.computeIfAbsent(dept.getParentId(), k -> new ArrayList<>()).add(dept);
+        }
+
         List<DeptVO> roots = new ArrayList<>();
-        for (SysDept org : deptList) {
-            if (org.getParentId() == 0L) {
-                roots.add(setChildren(this.convertToDeptVO(org), deptList));
+        for (SysDept dept : deptList) {
+            if (dept.getParentId() == 0L) {
+                roots.add(setChildrenWithMap(convertToDeptVO(dept), childrenMap));
             }
         }
 
         return roots;
     }
 
-
-    /**
-     * 递归setChildren
-     * children是子机构或部门
-     * @param deptVO
-     * @param deptList
-     * @return
-     */
-    private DeptVO setChildren(DeptVO deptVO, List<SysDept> deptList) {
+    private DeptVO setChildrenWithMap(DeptVO deptVO, Map<Long, List<SysDept>> childrenMap) {
         List<DeptVO> children = new ArrayList<>();
 
-        // 递归添加子机构或部门
-        for (SysDept child : deptList) {
-            if (child.getParentId().equals(deptVO.getId())) {
-                DeptVO childVO = this.convertToDeptVO(child);
-                // 递归查找子节点
-                childVO = setChildren(childVO, deptList);
-                children.add(childVO);
-            }
-            }
+        List<SysDept> directChildren = childrenMap.getOrDefault(deptVO.getId(), Collections.emptyList());
+        for (SysDept child : directChildren) {
+            DeptVO childVO = convertToDeptVO(child);
+            childVO = setChildrenWithMap(childVO, childrenMap); // 递归构建子树
+            children.add(childVO);
+        }
 
         deptVO.setChildren(children);
         return deptVO;
-        }
+    }
+
+
 
 
     /**
@@ -151,6 +185,29 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
     }
 
 
+    /**
+     * 递归setChildren
+     * children是子机构或部门
+     * @param deptVO
+     * @param deptList
+     * @return
+     */
+    private DeptVO setChildren(DeptVO deptVO, List<SysDept> deptList) {
+        List<DeptVO> children = new ArrayList<>();
+
+        // 递归添加子机构或部门
+        for (SysDept child : deptList) {
+            if (child.getParentId().equals(deptVO.getId())) {
+                DeptVO childVO = this.convertToDeptVO(child);
+                // 递归查找子节点
+                childVO = setChildren(childVO, deptList);
+                children.add(childVO);
+            }
+        }
+
+        deptVO.setChildren(children);
+        return deptVO;
+    }
 
 
 
