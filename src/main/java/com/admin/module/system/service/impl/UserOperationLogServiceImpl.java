@@ -1,5 +1,6 @@
 package com.admin.module.system.service.impl;
 
+import com.admin.module.system.query.UserOperationLogQuery;
 import com.admin.module.system.service.UserOperationLogService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -36,20 +37,17 @@ public class UserOperationLogServiceImpl extends ServiceImpl<UserOperationLogMap
     /**
      * 获取用户操作日志
      *
-     * @param page
-     * @param limit
-     * @param username
      * @return
      */
     @Override
-    public IPage<UserOperationLog> selectUserOperationLogPage(Integer page, Integer limit, String username) {
+    public IPage<UserOperationLog> selectUserOperationLogPage(UserOperationLogQuery query) {
         LambdaQueryWrapper<UserOperationLog> wrapper = new LambdaQueryWrapper<UserOperationLog>();
-        if (StringUtils.isNotBlank(username)) {
-            wrapper.like(UserOperationLog::getUsername, username);
+        if (StringUtils.isNotBlank(query.getUsername())) {
+            wrapper.like(UserOperationLog::getUsername, query.getUsername());
         }
         wrapper.orderByDesc(UserOperationLog::getCreateTime);
 
-        IPage<UserOperationLog> pageInfo = new Page<>(page, limit);
+        IPage<UserOperationLog> pageInfo = new Page<>(query.getPage(), query.getLimit());
         IPage<UserOperationLog> userOperationLogs = this.page(pageInfo, wrapper);
         return userOperationLogs;
     }

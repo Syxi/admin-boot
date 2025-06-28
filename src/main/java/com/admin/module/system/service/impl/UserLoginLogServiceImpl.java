@@ -1,6 +1,7 @@
 package com.admin.module.system.service.impl;
 
 import com.admin.module.system.mapper.UserLoginLogMapper;
+import com.admin.module.system.query.LoginLogQuery;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -34,20 +35,17 @@ public class UserLoginLogServiceImpl extends ServiceImpl<UserLoginLogMapper, Use
     /**
      * 登录日志分页列表
      *
-     * @param page
-     * @param limit
-     * @param username
      * @return
      */
     @Override
-    public IPage<UserLoginLog> selectLoginLogPage(Integer page, Integer limit, String username) {
+    public IPage<UserLoginLog> selectLoginLogPage(LoginLogQuery loginLogQuery) {
         LambdaQueryWrapper<UserLoginLog> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.isNotBlank(username)) {
-            wrapper.like(UserLoginLog::getUsername, username);
+        if (StringUtils.isNotBlank(loginLogQuery.getUsername())) {
+            wrapper.like(UserLoginLog::getUsername, loginLogQuery.getUsername());
         }
         wrapper.orderByDesc(UserLoginLog::getId);
 
-        IPage<UserLoginLog> pageInfo = new Page<>(page, limit);
+        IPage<UserLoginLog> pageInfo = new Page<>(loginLogQuery.getPage(), loginLogQuery.getLimit());
         IPage<UserLoginLog> userLoginLogIPage = this.page(pageInfo, wrapper);
         return userLoginLogIPage;
     }

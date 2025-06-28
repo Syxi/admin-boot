@@ -1,6 +1,7 @@
 package com.admin.module.system.service;
 
 import com.admin.module.system.entity.UserLoginLog;
+import com.admin.module.system.query.LoginLogQuery;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.aspectj.lang.JoinPoint;
@@ -16,12 +17,9 @@ public interface UserLoginLogService extends IService<UserLoginLog> {
     /**
      * 登录日志分页列表
      *
-     * @param page
-     * @param limit
-     * @param username
      * @return
      */
-    IPage<UserLoginLog> selectLoginLogPage(Integer page, Integer limit, String username);
+    IPage<UserLoginLog> selectLoginLogPage(LoginLogQuery loginLogQuery);
 
     /**
      * 保存登录日志

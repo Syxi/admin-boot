@@ -1,5 +1,6 @@
 package com.admin.module.system.service;
 
+import com.admin.module.system.query.UserOperationLogQuery;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.admin.module.system.entity.UserOperationLog;
@@ -14,12 +15,9 @@ public interface UserOperationLogService extends IService<UserOperationLog> {
 
     /**
      * 获取用户操作日志
-     * @param page
-     * @param limit
-     * @param username
      * @return
      */
-    IPage<UserOperationLog> selectUserOperationLogPage(Integer page, Integer limit, String username);
+    IPage<UserOperationLog> selectUserOperationLogPage(UserOperationLogQuery query);
 
 
     /**
