@@ -7,6 +7,7 @@ import com.admin.common.exception.CustomException;
 import com.admin.module.system.entity.SysDept;
 import com.admin.module.system.form.DeptForm;
 import com.admin.module.system.mapper.SysDeptMapper;
+import com.admin.module.system.query.DeptQuery;
 import com.admin.module.system.service.SysDeptService;
 import com.admin.module.system.service.SysPositionDeptService;
 import com.admin.module.system.vo.DeptVO;
@@ -43,7 +44,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
      * @return
      */
     @Override
-    public List<DeptVO> deptTree(String keyWord) {
+    public List<DeptVO> deptTree(DeptQuery deptQuery) {
         // 组织列表
         LambdaQueryWrapper<SysDept> queryWrapper = new LambdaQueryWrapper<>();
 //        if (StringUtils.isNotBlank(keyWord)) {
@@ -58,13 +59,13 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
         }
 
         // 如果没有关键词，直接构建整个树
-        if (StringUtils.isBlank(keyWord)) {
+        if (StringUtils.isBlank(deptQuery.getKeyWord())) {
             return buildDeptTree(deptList);
         }
 
         // 筛选出名称匹配的部门
         List<SysDept> matchedDepts = deptList.stream()
-                .filter(dept -> dept.getDeptName().contains(keyWord))
+                .filter(dept -> dept.getDeptName().contains(deptQuery.getKeyWord()))
                 .collect(Collectors.toList());
 
         if (CollectionUtils.isEmpty(matchedDepts)) {

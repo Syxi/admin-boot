@@ -2,6 +2,7 @@ package com.admin.web;
 
 import com.admin.common.annotation.NoRepeatSubmit;
 import com.admin.common.result.ResultVO;
+import com.admin.module.system.query.DeptQuery;
 import com.admin.module.system.vo.OptionVO;
 import com.admin.module.system.form.DeptForm;
 import com.admin.module.system.vo.DeptVO;
@@ -24,8 +25,8 @@ public class SysDeptController {
 
     @Operation(summary = "部门树")
     @GetMapping("/tree")
-    public ResultVO<List<DeptVO>> deptTree(String keyWord) {
-        List<DeptVO> deptList = sysDeptService.deptTree(keyWord);
+    public ResultVO<List<DeptVO>> deptTree(DeptQuery deptQuery) {
+        List<DeptVO> deptList = sysDeptService.deptTree(deptQuery);
         return ResultVO.success(deptList);
     }
 

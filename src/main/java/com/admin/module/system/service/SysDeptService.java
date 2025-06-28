@@ -1,5 +1,6 @@
 package com.admin.module.system.service;
 
+import com.admin.module.system.query.DeptQuery;
 import com.admin.module.system.vo.OptionVO;
 import com.admin.module.system.entity.SysDept;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -21,7 +22,7 @@ public interface SysDeptService extends IService<SysDept> {
      *
      * @return
      */
-    List<DeptVO> deptTree(String keyWord);
+    List<DeptVO> deptTree(DeptQuery deptQuery);
 
 
     /**
