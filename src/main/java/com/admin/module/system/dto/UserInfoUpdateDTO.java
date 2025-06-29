@@ -15,6 +15,9 @@ public class UserInfoUpdateDTO {
     @Schema(description = "用户名")
     private String username;
 
+    @Schema(description = "用户头像")
+    private String avatar;
+
     @Schema(description = "用户昵称")
     private String realName;
 

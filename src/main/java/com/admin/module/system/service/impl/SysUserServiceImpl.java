@@ -805,6 +805,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         SysUser sysUser = new SysUser();
         sysUser.setUserId(userId);
         sysUser.setRealName(userInfo.getRealName());
+        sysUser.setAvatar(userInfo.getAvatar());
         sysUser.setGender(userInfo.getGender());
         sysUser.setMobile(userInfo.getMobile());
         sysUser.setEmail(userInfo.getEmail());
