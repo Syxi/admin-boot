@@ -8,5 +8,5 @@ import lombok.EqualsAndHashCode;
 @Data
 public class SysSwitchConfigQuery extends BasePage {
 
-    private String confName;
+    private String configName;
 }

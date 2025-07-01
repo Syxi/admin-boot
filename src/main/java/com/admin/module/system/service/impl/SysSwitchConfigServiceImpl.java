@@ -65,8 +65,8 @@ public class SysSwitchConfigServiceImpl extends ServiceImpl<SysSwitchConfigMappe
     @Override
     public IPage<SysSwitchConfigVO> selectSysSwitchConfigPage(SysSwitchConfigQuery config) {
         LambdaQueryWrapper<SysSwitchConfig> queryWrapper = new LambdaQueryWrapper<SysSwitchConfig>();
-        if (StringUtils.isNotEmpty(config.getConfName())) {
-            queryWrapper.like(SysSwitchConfig::getConfigKey, config.getConfName());
+        if (StringUtils.isNotEmpty(config.getConfigName())) {
+            queryWrapper.like(SysSwitchConfig::getConfigName, config.getConfigName());
         }
         Page<SysSwitchConfig> page = new Page<>(config.getPage(), config.getLimit());
         IPage<SysSwitchConfig> pageData = this.page(page, queryWrapper);
