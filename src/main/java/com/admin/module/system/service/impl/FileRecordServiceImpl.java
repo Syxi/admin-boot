@@ -8,7 +8,6 @@ import com.admin.module.system.query.FileRecordQuery;
 import com.admin.module.system.service.FileRecordService;
 import com.admin.module.system.vo.FileRecordVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -228,19 +227,13 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
                 if (fileExtension.equalsIgnoreCase("pdf")) {
                    // 是pdf文件，直接复制到保存pdf的目录
                     Files.copy(file.getInputStream(), savePdfPath, StandardCopyOption.REPLACE_EXISTING);
-                    // 更新文件转换状态
-                    this.updateFileConvertStatus(FileConvertEnum.SUCCESS.getValue(), fileRecord.getId());
                 } else {
                     // 转换成pdf文件
                     CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
                         try {
                             convertToPDF(saveFilePath, savePdfPath, originalFileName, fileRecord.getId());
-                            // 更新文件转换状态
-                            this.updateFileConvertStatus(FileConvertEnum.SUCCESS.getValue(), fileRecord.getId());
                         } catch (OfficeException e) {
                             log.error("文件转换失败： {}", e.getMessage());
-                            // 更新文件转换状态
-                            this.updateFileConvertStatus(FileConvertEnum.FAIL.getValue(), fileRecord.getId());
                             throw new RuntimeException(e);
                         }
                     });
@@ -286,17 +279,6 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
     }
 
 
-    /**
-     * 更新文件转换状态
-     * @param fileConvertStatus
-     * @param id
-     */
-    private void updateFileConvertStatus(Integer fileConvertStatus, Long id) {
-        LambdaUpdateWrapper<FileRecord> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.set(FileRecord::getFileConversionStatus, fileConvertStatus);
-        updateWrapper.eq(FileRecord::getId, id);
-        this.update(updateWrapper);
-    }
 
 
 
@@ -348,17 +330,6 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
             log.error("failed to access the file: {}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 检查文件转pdf是否成功
-     * @param id
-     * @return
-     */
-    @Override
-    public Integer checkFileConvertStatus(Long id) {
-        FileRecord fileRecord = this.getById(id);
-        return fileRecord.getFileConversionStatus();
     }
 
 

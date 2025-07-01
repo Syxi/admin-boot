@@ -61,10 +61,4 @@ public interface FileRecordService extends IService<FileRecord> {
      */
     Resource handleDownloadPdfFile(String pdfStoragePath);
 
-    /**
-     * 检测文件转换是否成功
-     * @param id
-     * @return
-     */
-    Integer checkFileConvertStatus(Long id);
 }
