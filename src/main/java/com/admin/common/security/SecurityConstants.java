@@ -33,5 +33,9 @@ public class SecurityConstants {
     // 验证码缓存前缀
     public static final String CAPTCHA_CODE_PREFIX = "captcha_code";
 
+    /**
+     * 在线用户缓存前缀
+     */
+    public static final String ONLINE_USER_PREFIX = "online_user";
 
 }

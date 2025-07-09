@@ -5,14 +5,14 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.4</version>
+        <version>3.5.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.yan</groupId>
     <artifactId>admin-boot</artifactId>
     <version>1.0</version>
-    <name>yan-admin</name>
-    <description>yan-admin</description>
+    <name>admin-boot</name>
+    <description>admin-boot</description>
 
     <properties>
         <java.version>17</java.version>
@@ -39,7 +39,7 @@
         <!-- redisson 分布式锁 -->
         <redisson.version>3.24.3</redisson.version>
         <!--   excel     -->
-        <easywxcel.version>3.3.3</easywxcel.version>
+        <easywxcel.version>4.0.3</easywxcel.version>
         <!--    下载IO    -->
         <commons-io.version>2.15.0</commons-io.version>
         <skywalking.version>9.2.0</skywalking.version>

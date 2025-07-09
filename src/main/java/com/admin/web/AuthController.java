@@ -94,12 +94,12 @@ public class AuthController {
     }
 
     // jwt 签署密钥随机生成
-    public static void main(String[] args) throws Exception {
-        KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
-        keyGen.init(256); // For HS256, the key size should be at least 256 bits
-        SecretKey secretKey = keyGen.generateKey();
-
-        String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());
-        System.out.println("Generated Base64 Encoded Key: " + encodedKey);
-    }
+//    public static void main(String[] args) throws Exception {
+//        KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
+//        keyGen.init(256); // For HS256, the key size should be at least 256 bits
+//        SecretKey secretKey = keyGen.generateKey();
+//
+//        String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());
+//        System.out.println("Generated Base64 Encoded Key: " + encodedKey);
+//    }
 }

@@ -1,0 +1,34 @@
+package com.admin.module.system.service;
+
+import com.admin.module.system.query.OnlineUserQuery;
+import com.admin.module.system.vo.OnlineUserVO;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import org.springframework.security.core.Authentication;
+
+/**
+ * 在线用户服务
+ */
+public interface OnlineUserService {
+
+    /**
+     * 用户登录时记录到在线列表
+     *
+     * @param authentication 认证信息
+     * @param token          当前token
+     * @param jwt            token的唯一标识符
+     */
+    void addOnlineUser(Authentication authentication, String token, String jwt);
+
+    /**
+     * 查询在线用户列表
+     * @param onlineUserQuery
+     * @return
+     */
+    IPage<OnlineUserVO> selectOnlineUserPage(OnlineUserQuery onlineUserQuery);
+
+    /**
+     * 强制用户下线
+     * @param username
+     */
+    void forceLogout(String username);
+}
