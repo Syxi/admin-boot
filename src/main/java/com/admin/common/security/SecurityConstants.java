@@ -27,15 +27,15 @@ public class SecurityConstants {
     /**
      * 黑名单Token缓存前缀
      */
-    public static final String BLACK_TOKEN_PREFIX = "Black_token";
+    public static final String BLACK_TOKEN_PREFIX = "Black_token_";
 
 
     // 验证码缓存前缀
-    public static final String CAPTCHA_CODE_PREFIX = "captcha_code";
+    public static final String CAPTCHA_CODE_PREFIX = "captcha_code_";
 
     /**
      * 在线用户缓存前缀
      */
-    public static final String ONLINE_USER_PREFIX = "online_user";
+    public static final String ONLINE_USER_PREFIX = "online_user_";
 
 }

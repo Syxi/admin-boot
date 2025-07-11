@@ -9,9 +9,7 @@ public class OnlineUserVO {
 
     private String username;
 
-    private String realName;
-
-    private String ip;
+    private Long userId;
 
     private LocalDateTime loginTime;
 }

@@ -7,6 +7,7 @@ import com.admin.common.result.ResultCode;
 import com.admin.common.security.SecurityConstants;
 import com.admin.common.security.SysUserDetails;
 import com.admin.common.security.service.TokenService;
+import com.admin.module.system.service.OnlineUserService;
 import com.admin.module.system.vo.AuthTokenVO;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -33,10 +34,13 @@ public class JwtTokenServiceImpl implements TokenService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final byte[] secretKeyBytes;
 
-    public JwtTokenServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate) {
+    private final OnlineUserService onlineUserService;
+
+    public JwtTokenServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate, OnlineUserService onlineUserService) {
         this.securityProperties = securityProperties;
         this.secretKeyBytes = securityProperties.getJwt().getKey().getBytes(StandardCharsets.UTF_8);
         this.redisTemplate = redisTemplate;
+        this.onlineUserService = onlineUserService;
     }
 
 
@@ -225,6 +229,9 @@ public class JwtTokenServiceImpl implements TokenService {
         Long accessTokenExpiration = securityProperties.getJwt().getAccessTokenTimeTOLive();
         String newAccessToken = this.createToken(authentication, accessTokenExpiration);
 
+        // 更新在线用户记录
+        String username = authentication.getName();
+        onlineUserService.updateOnlineUser(username, newAccessToken);
 
         return AuthTokenVO.builder()
                 .accessToken(newAccessToken)

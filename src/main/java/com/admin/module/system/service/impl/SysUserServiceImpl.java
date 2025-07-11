@@ -574,8 +574,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         wrapper.orderByDesc(UserLoginLog::getLoginTime);
         wrapper.last("limit 1");
         UserLoginLog userLoginLog = userLoginLogService.getOne(wrapper);
-        LocalDateTime lastLoginTime = userLoginLog.getLoginTime();
-        userInfoVO.setLastLoginTime(lastLoginTime);
+        if (userLoginLog != null) {
+            LocalDateTime lastLoginTime = userLoginLog.getLoginTime();
+            userInfoVO.setLastLoginTime(lastLoginTime);
+        }
+
 
 
 

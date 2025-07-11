@@ -8,6 +8,7 @@ import com.admin.common.properties.CaptchaProperties;
 import com.admin.common.security.SecurityConstants;
 import com.admin.common.security.service.TokenService;
 import com.admin.module.system.service.AuthService;
+import com.admin.module.system.service.OnlineUserService;
 import com.admin.module.system.vo.AuthTokenVO;
 import com.admin.module.system.vo.CaptchaVO;
 import com.admin.module.system.vo.LoginParams;
@@ -53,6 +54,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final RsaServiceImpl rsaService;
 
+    private final OnlineUserService onlineUserService;
+
 
     @Override
     public AuthTokenVO login(LoginParams loginParams) {
@@ -64,10 +67,16 @@ public class AuthServiceImpl implements AuthService {
 //        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(loginParams.getUsername(), loginParams.getPassword());
         // 执行认证 （认证中）
         Authentication authentication = authenticationManager.authenticate(token);
+
         // 认证成功后生成 jwt 令牌
         AuthTokenVO authTokenVO = tokenService.generateToken(authentication);
+
         // token 存到security上下文
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // 添加在线用户
+        onlineUserService.addOnlineUser(authentication, authTokenVO.getAccessToken());
+
         return authTokenVO;
     }
 
@@ -78,11 +87,20 @@ public class AuthServiceImpl implements AuthService {
     public void logout() {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+        // 删除在线用户记录
+        Authentication authentication = tokenService.parseToken(token);
+        String username = authentication.getName();
+        onlineUserService.forceLogout(username);
+
+
         if (StringUtils.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
             token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
             // 将jwt令牌加入黑名单
             tokenService.blacklistToken(token);
         }
+
+
         // 清除security上下文
         SecurityContextHolder.clearContext();
     }

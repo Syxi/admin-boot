@@ -16,8 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import java.security.PublicKey;
 import java.util.Base64;
 
@@ -37,6 +35,7 @@ public class AuthController {
     private final RedisTemplate<String, String> redisTemplate;
 
     private final RsaServiceImpl rsaService;
+
 
 
     @Operation(summary = "登录")
