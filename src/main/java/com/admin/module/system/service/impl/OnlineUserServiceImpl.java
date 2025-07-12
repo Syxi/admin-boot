@@ -4,14 +4,12 @@ import com.admin.common.exception.CustomException;
 import com.admin.common.properties.SecurityProperties;
 import com.admin.common.security.SecurityConstants;
 import com.admin.common.security.SysUserDetails;
-import com.admin.module.system.entity.OnlineUser;
-import com.admin.module.system.mapper.OnlineUserMapper;
+import com.admin.common.security.service.TokenService;
 import com.admin.module.system.query.OnlineUserQuery;
 import com.admin.module.system.service.OnlineUserService;
 import com.admin.module.system.vo.OnlineUserVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -35,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 */
 @Slf4j
 @Service
-public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineUser> implements OnlineUserService{
+public class OnlineUserServiceImpl implements OnlineUserService{
 
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -43,10 +41,13 @@ public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineU
 
     private final byte[] secretKeyBytes;
 
-    public OnlineUserServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate) {
+    private final TokenService tokenService;
+
+    public OnlineUserServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate, TokenService tokenService) {
         this.securityProperties = securityProperties;
         this.secretKeyBytes = securityProperties.getJwt().getKey().getBytes(StandardCharsets.UTF_8);
         this.redisTemplate = redisTemplate;
+        this.tokenService = tokenService;
     }
 
     /**
@@ -71,7 +72,7 @@ public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineU
 
                 // 将旧Token加入黑名单
                 if (oldToken != null && !oldToken.equals(token)) {
-                    blacklistToken(oldToken);
+                    tokenService.blacklistToken(oldToken);
                 }
 
                 // 删除旧Token
@@ -91,33 +92,6 @@ public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineU
         } catch (Exception e) {
             log.error("添加在线用户记录失败", e);
             throw new RuntimeException("添加在线用户记录失败："+ e.getMessage());
-        }
-    }
-
-
-    /**
-     * 刷新Token时 更新在线用户记录
-     *
-     * @param username 用户名
-     * @param newAccessToken   新的AccessToken
-     */
-    public void updateOnlineUser(String username, String newAccessToken) {
-        String key = SecurityConstants.ONLINE_USER_PREFIX + username;
-
-        try {
-            Map<Object, Object> userData = redisTemplate.opsForHash().entries(key);
-            if (userData.isEmpty()) {
-                log.warn("在线用户记录不存在： {}", username);
-                return;
-            }
-
-            // 更新token 和 登录时间
-            redisTemplate.opsForHash().put(key, "token", newAccessToken);
-            redisTemplate.opsForHash().put(key, "loginTime", System.currentTimeMillis());
-            log.info("更新在线用户成功：{}", username);
-        } catch (Exception e) {
-            log.error("更新在线用户记录失败：{}", username, e);
-            throw new RuntimeException("更新在线用户记录失败："+ e.getMessage());
         }
     }
 
@@ -181,7 +155,7 @@ public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineU
     }
 
     /**
-     * 强制用户下线
+     * 强制用户下线, 把token加入黑名单
      *
      * @param username
      */
@@ -199,11 +173,9 @@ public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineU
             String token = (String) userData.get("token");
             // 将token加入黑名单
             if (token != null) {
-                blacklistToken(token);
+                tokenService.blacklistToken(token);
             }
 
-            // 删除在线用户记录
-            redisTemplate.delete(key);
         } catch (Exception e) {
             log.error("强制用户下线失败：{}", username, e);
             throw new RuntimeException("强制用户下线失败："+ e.getMessage());
@@ -211,53 +183,7 @@ public class OnlineUserServiceImpl extends ServiceImpl<OnlineUserMapper, OnlineU
 
     }
 
-    /**
-     * 将 Token 加入黑名单
-     *
-     * @param token JWT Token
-     */
-    private void blacklistToken(String token) {
-        if (token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
-            token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
-        }
 
-        Claims claims = this.getTokenClaims(token);
-        String jti = claims.getId();
-        Date expirationDate = claims.getExpiration();
-
-        if (expirationDate != null) {
-            long currentTimeSeconds = System.currentTimeMillis() / 1000;
-
-            if (expirationDate.getTime() < currentTimeSeconds) {
-                // token已过期，直接返回
-                return;
-            }
-            // 计算token剩余时间，将其加入黑名单
-            long expiration = expirationDate.getTime()- System.currentTimeMillis();
-            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.SECONDS);
-        } else {
-            // 永不过期的token，加入黑名单
-            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null);
-        }
-
-    }
-
-    /**
-     * 获取 token 的Claims, claims中包含了用户的基本信息
-     */
-    private Claims getTokenClaims(String token) {
-        try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(secretKeyBytes)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-            return claims;
-        } catch (JwtException e) {
-            log.error("token解析失败：{}", e.getMessage());
-            throw new RuntimeException(e);
-        }
-    }
 
 
 }

@@ -34,13 +34,11 @@ public class JwtTokenServiceImpl implements TokenService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final byte[] secretKeyBytes;
 
-    private final OnlineUserService onlineUserService;
 
-    public JwtTokenServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate, OnlineUserService onlineUserService) {
+    public JwtTokenServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate) {
         this.securityProperties = securityProperties;
         this.secretKeyBytes = securityProperties.getJwt().getKey().getBytes(StandardCharsets.UTF_8);
         this.redisTemplate = redisTemplate;
-        this.onlineUserService = onlineUserService;
     }
 
 
@@ -188,15 +186,16 @@ public class JwtTokenServiceImpl implements TokenService {
         String jti = claims.getId();
         Date expiration = claims.getExpiration();
 
-        boolean isExpire = expiration.after(new Date());
-        if (isExpire) {
-            boolean isBlackToken = Boolean.TRUE.equals(redisTemplate.hasKey(SecurityConstants.BLACK_TOKEN_PREFIX + jti));
-             if (isBlackToken) {
-                 return false; // 在黑名单内无效,token已过期
-             }
+        boolean isExpire = expiration.before(new Date());
+
+        boolean isBlackToken = Boolean.TRUE.equals(redisTemplate.hasKey(SecurityConstants.BLACK_TOKEN_PREFIX + jti));
+        if (isBlackToken) {
+            log.info("token {} 在黑名单中", jti);
+            return false; // 在黑名单内无效
         }
 
-        return isExpire;
+
+        return !isExpire;
     }
 
 
@@ -229,9 +228,6 @@ public class JwtTokenServiceImpl implements TokenService {
         Long accessTokenExpiration = securityProperties.getJwt().getAccessTokenTimeTOLive();
         String newAccessToken = this.createToken(authentication, accessTokenExpiration);
 
-        // 更新在线用户记录
-        String username = authentication.getName();
-        onlineUserService.updateOnlineUser(username, newAccessToken);
 
         return AuthTokenVO.builder()
                 .accessToken(newAccessToken)
@@ -249,28 +245,45 @@ public class JwtTokenServiceImpl implements TokenService {
      */
     @Override
     public void blacklistToken(String token) {
-        if (token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
-            token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
-        }
+        try {
+            Claims   claims = Jwts.parserBuilder()
+                    .setSigningKey(secretKeyBytes)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
 
-        Claims claims = this.getTokenClaims(token);
-        String jti = claims.getId();
-        Date expirationDate = claims.getExpiration();
 
-        if (expirationDate != null) {
-            long currentTimeSeconds = System.currentTimeMillis() / 1000;
+            String jti = claims.getId();
 
-            if (expirationDate.getTime() < currentTimeSeconds) {
-                // token已过期，直接返回
-                return;
+            // 删除在线用户记录
+            String username = claims.get(JwtClaimConstants.USER_NAME, String.class);
+            redisTemplate.delete(SecurityConstants.ONLINE_USER_PREFIX + username);
+
+            Date expirationDate = claims.getExpiration();
+            if (expirationDate != null && expirationDate.after(new Date())) {
+
+                // 未过期token，将其加入黑名单
+                long expiration = expirationDate.getTime()- System.currentTimeMillis();
+                redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.MICROSECONDS);
             }
-            // 计算token剩余时间，将其加入黑名单
+
+        } catch (ExpiredJwtException e) {
+            Claims claims = e.getClaims();
+            String username = claims.get(JwtClaimConstants.USER_NAME, String.class);
+            redisTemplate.delete(SecurityConstants.ONLINE_USER_PREFIX + username);
+
+            // 过期token，将其加入黑名单
+            String jti = claims.getId();
+            Date expirationDate = claims.getExpiration();
             long expiration = expirationDate.getTime()- System.currentTimeMillis();
-            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.SECONDS);
-        } else {
-            // 永不过期的token，加入黑名单
-            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null);
+            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.MICROSECONDS);
+            log.info("token已过期,删除过期token的在线用户记录：{}", username);
+        } catch (JwtException e) {
+            log.error("token解析失败：{}", e.getMessage());
+            throw new CustomException(ResultCode.TOKEN_INVALID.getMsg());
         }
+
+
 
     }
 

@@ -27,6 +27,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.awt.*;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -88,15 +89,15 @@ public class AuthServiceImpl implements AuthService {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        // 删除在线用户记录
-        Authentication authentication = tokenService.parseToken(token);
-        String username = authentication.getName();
-        onlineUserService.forceLogout(username);
-
+        // token是空，则删除所有在线用户的缓存
+        if (StringUtils.isEmpty(token)) {
+            Set<String> keys = redisTemplate.keys(SecurityConstants.ONLINE_USER_PREFIX + "*");
+            redisTemplate.delete(keys);
+        }
 
         if (StringUtils.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
-            token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
             // 将jwt令牌加入黑名单
+            token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
             tokenService.blacklistToken(token);
         }
 

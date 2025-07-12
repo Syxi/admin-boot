@@ -8,5 +8,4 @@ import lombok.EqualsAndHashCode;
 @Data
 public class OnlineUserQuery extends BasePage {
     private String username;
-    private String realName;
 }
