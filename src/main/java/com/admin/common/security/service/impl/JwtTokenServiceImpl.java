@@ -188,6 +188,7 @@ public class JwtTokenServiceImpl implements TokenService {
 
         boolean isExpire = expiration.before(new Date());
 
+        // 验证token是否在黑名单内
         boolean isBlackToken = Boolean.TRUE.equals(redisTemplate.hasKey(SecurityConstants.BLACK_TOKEN_PREFIX + jti));
         if (isBlackToken) {
             log.info("token {} 在黑名单中", jti);
@@ -245,6 +246,7 @@ public class JwtTokenServiceImpl implements TokenService {
      */
     @Override
     public void blacklistToken(String token) {
+        Long expiration = securityProperties.getJwt().getAccessTokenTimeTOLive();
         try {
             Claims   claims = Jwts.parserBuilder()
                     .setSigningKey(secretKeyBytes)
@@ -259,13 +261,9 @@ public class JwtTokenServiceImpl implements TokenService {
             String username = claims.get(JwtClaimConstants.USER_NAME, String.class);
             redisTemplate.delete(SecurityConstants.ONLINE_USER_PREFIX + username);
 
-            Date expirationDate = claims.getExpiration();
-            if (expirationDate != null && expirationDate.after(new Date())) {
 
-                // 未过期token，将其加入黑名单
-                long expiration = expirationDate.getTime()- System.currentTimeMillis();
-                redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.MICROSECONDS);
-            }
+            // 未过期token，将其加入黑名单
+            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.SECONDS);
 
         } catch (ExpiredJwtException e) {
             Claims claims = e.getClaims();
@@ -274,9 +272,7 @@ public class JwtTokenServiceImpl implements TokenService {
 
             // 过期token，将其加入黑名单
             String jti = claims.getId();
-            Date expirationDate = claims.getExpiration();
-            long expiration = expirationDate.getTime()- System.currentTimeMillis();
-            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.MICROSECONDS);
+            redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.SECONDS);
             log.info("token已过期,删除过期token的在线用户记录：{}", username);
         } catch (JwtException e) {
             log.error("token解析失败：{}", e.getMessage());
