@@ -310,6 +310,19 @@
             <version>5.8.27</version>
         </dependency>
 
+        <!-- OSHI Core -->
+        <dependency>
+            <groupId>com.github.oshi</groupId>
+            <artifactId>oshi-core</artifactId>
+            <version>6.4.10</version>
+        </dependency>
+
+        <!-- JNA Platform (required by OSHI) -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.16.0</version>
+        </dependency>
 
     </dependencies>
 
