@@ -24,6 +24,11 @@ public class Image implements Serializable {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 图片名称
      */
     private String imageName;

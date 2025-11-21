@@ -24,6 +24,11 @@ public class Category implements Serializable {
     private Long categoryId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 分类名称
      */
     private String categoryName;

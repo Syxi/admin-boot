@@ -45,6 +45,12 @@ public class SecurityUtils {
         return getCurrentUser().map(SysUserDetails::getUserId).orElse(null);
     }
 
+    /**
+     * 获取租户id
+     * @return
+     */
+    public static Long getTenantId() {return getCurrentUser().map(SysUserDetails::getUserId).orElse(null);}
+
 
     /**
      * 获取用户名

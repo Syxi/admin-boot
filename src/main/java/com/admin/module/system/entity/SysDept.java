@@ -21,6 +21,11 @@ public class SysDept implements Serializable {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 部门名称
      */
     private String deptName;

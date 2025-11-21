@@ -27,6 +27,11 @@ public class UserLoginLog implements Serializable {
     private Long userId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 登录用户名
      */
     private String username;

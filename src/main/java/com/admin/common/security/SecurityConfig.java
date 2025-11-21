@@ -26,6 +26,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
+ * Spring Security 安全配置
+ * 
  * @author suYan
  * @date 2023/4/6 22:44
  */
@@ -35,101 +37,91 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-
     private final RedisTemplate<String, Object> redisTemplate;
-
     private final CodeGenerator codeGenerator;
-
     private final MyAuthenticationEntryPoint myAuthenticationEntryPoint;
-
     private final MyAccessDeniedHandler myAccessDeniedHandler;
-
     private final SecurityProperties securityProperties;
-
     private final TokenService tokenService;
 
-
-
-
+    /**
+     * 配置Security过滤器链
+     * 
+     * @param httpSecurity HttpSecurity实例
+     * @return SecurityFilterChain
+     * @throws Exception 配置异常
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-
         httpSecurity
-                .csrf(AbstractHttpConfigurer::disable) // 关闭 csrf
+                // 关闭CSRF防护，因为使用JWT不需要CSRF保护
+                .csrf(AbstractHttpConfigurer::disable)
+                // 配置请求授权
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(SecurityConstants.LOGIN_PATH).permitAll() // 登录路径允许所有人访问
-                        .anyRequest().authenticated()  // 其他所有请求都需要认证
+                        .requestMatchers(SecurityConstants.LOGIN_PATH).permitAll()
+                        .anyRequest().authenticated()
                 )
+                // 设置会话管理为无状态，不创建Session
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 设置会话创建策略为无状态
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                // 配置异常处理
                 .exceptionHandling(ex -> ex
-                                .authenticationEntryPoint(myAuthenticationEntryPoint) // 自定义身份认证入口点
-                                .accessDeniedHandler(myAccessDeniedHandler) // 自定义访问拒绝处理器
+                        .authenticationEntryPoint(myAuthenticationEntryPoint)
+                        .accessDeniedHandler(myAccessDeniedHandler)
+                );
 
-                        );
+        // 添加验证码校验过滤器
+        httpSecurity.addFilterBefore(
+                new CaptchaValidationFilter(redisTemplate, codeGenerator),
+                UsernamePasswordAuthenticationFilter.class
+        );
 
-        // 验证码校验过滤器
-        httpSecurity.addFilterBefore(new CaptchaValidationFilter(redisTemplate, codeGenerator), UsernamePasswordAuthenticationFilter.class);
+        // 添加JWT校验过滤器
+        httpSecurity.addFilterBefore(
+                new JwtValidationFilter(tokenService),
+                UsernamePasswordAuthenticationFilter.class
+        );
 
-        // Jwt 校验过滤器
-        httpSecurity.addFilterBefore(new JwtValidationFilter(tokenService), UsernamePasswordAuthenticationFilter.class);
         return httpSecurity.build();
     }
 
-
     /**
-     * 不走过滤器链的放行配置
-     * @return
+     * 配置不走过滤器链的放行路径
+     * 
+     * @return WebSecurityCustomizer
      */
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> {
             if (CollectionUtils.isNotEmpty(securityProperties.getIgnoreUrls())) {
-                web.ignoring().requestMatchers(securityProperties.getIgnoreUrls().toArray(new String[0]));
+                web.ignoring().requestMatchers(
+                        securityProperties.getIgnoreUrls().toArray(new String[0])
+                );
             }
         };
     }
 
-
-
     /**
-     * 密码编码器
-     * @return
+     * 密码加密器，使用BCrypt加密算法
+     * 
+     * @return PasswordEncoder
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-
     /**
-     * 默认的密码认证 Provider
-     * @return
-     */
-//    @Bean
-//    public DaoAuthenticationProvider daoAuthenticationProvider() {
-//        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
-//        daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
-//        daoAuthenticationProvider.setUserDetailsService(sysUserDetailsService);
-//        daoAuthenticationProvider.setHideUserNotFoundExceptions(false);
-//        return daoAuthenticationProvider;
-//    }
-
-
-    /**
-     *
-     * 手动注入AuthenticationManager
-     * - DaoAuthenticationProvider：用户密码认证
-     * - XXX：其他微信认证
+     * 认证管理器，用于处理认证请求
+     * 
+     * @param authenticationConfiguration 认证配置
+     * @return AuthenticationManager
+     * @throws Exception 配置异常
      */
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
-
-
-
-
-
 }

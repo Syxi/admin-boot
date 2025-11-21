@@ -23,6 +23,11 @@ public class SysRole {
     private Long roleId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 角色名称
      */
     @TableField(value = "role_name")

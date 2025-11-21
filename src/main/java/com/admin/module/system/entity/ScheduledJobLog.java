@@ -22,6 +22,11 @@ public class ScheduledJobLog implements Serializable {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 定时任务id
      */
     private Long jobId;

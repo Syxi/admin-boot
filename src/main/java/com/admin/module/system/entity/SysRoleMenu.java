@@ -27,6 +27,11 @@ public class SysRoleMenu {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 角色ID
      */
     @TableField(value = "role_id")

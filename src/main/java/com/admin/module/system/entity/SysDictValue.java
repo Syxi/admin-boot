@@ -26,6 +26,11 @@ public class SysDictValue {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 字典类型编码
      */
     @TableField(value = "type_code")

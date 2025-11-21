@@ -14,6 +14,11 @@ public class FileRecord {
     // 文件id
     private Long id;
 
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
+
     // 文件名称
     private String fileName;
 

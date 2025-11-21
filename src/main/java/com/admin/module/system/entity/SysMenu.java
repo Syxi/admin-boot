@@ -26,6 +26,11 @@ public class SysMenu {
     private Long menuId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 父菜单ID
      */
     @TableField(value = "parent_id")

@@ -21,6 +21,11 @@ public class SysPositionDept implements Serializable {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 岗位id
      */
     private Long positionId;

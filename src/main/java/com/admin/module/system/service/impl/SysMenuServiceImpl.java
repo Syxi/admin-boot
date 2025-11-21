@@ -1,14 +1,13 @@
 package com.admin.module.system.service.impl;
 
-import com.admin.common.constant.CacheConstants;
 import com.admin.common.constant.SystemConstants;
-import com.admin.common.enums.DeletedEnum;
 import com.admin.common.enums.MenuTypeEnum;
 import com.admin.common.enums.StatusEnum;
 import com.admin.module.system.dto.RouteDTO;
 import com.admin.module.system.entity.SysMenu;
 import com.admin.module.system.entity.SysRole;
 import com.admin.module.system.entity.SysRoleMenu;
+import com.admin.module.system.event.RolePermissionChangedEvent;
 import com.admin.module.system.form.MenuForm;
 import com.admin.module.system.mapper.SysMenuMapper;
 import com.admin.module.system.query.MenuQuery;
@@ -31,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,10 +52,9 @@ import static java.util.stream.Collectors.toSet;
 public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
 
     private final SysRoleMenuService roleMenuService;
-
     private final SysRoleService roleService;
-
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
 
 
@@ -474,14 +473,14 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         String newPerm = menuForm.getPerm();
         String oldPerm = sysMenu.getPerm();
 
-        // 更详细菜单
+        // 更新菜单
         boolean result = this.updateById(menu);
-        // 更新角色权限缓存
-        if (result) {
-            if (StringUtils.isNotBlank(oldPerm)  && !oldPerm.equals(newPerm)) {
-                this.refreshRolePermsCache();
-            }
-
+        
+        // 权限标识发生变化，发布菜单权限变更事件
+        if (result && StringUtils.isNotBlank(oldPerm) && !oldPerm.equals(newPerm)) {
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.MENU_PERMISSION_UPDATED));
+            log.info("菜单权限标识变更，已发布权限变更事件: oldPerm={}, newPerm={}", oldPerm, newPerm);
         }
 
         // 修改中间层次菜单的父菜单，如果菜单有子菜单，则更新子菜单的树路径
@@ -640,8 +639,10 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         boolean result = this.remove(updateWrapper);
 
         if (result) {
-            // 刷新角色权限缓存
-            this.refreshRolePermsCache();
+            // 发布菜单删除事件
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.MENU_DELETED));
+            log.info("菜单已删除，已发布权限变更事件: menuId={}", menuId);
         }
 
         return result;
@@ -671,13 +672,13 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
     /**
      * 更新角色的菜单资源
-     * @param roleId
-     * @param menuIds
-     * @return
+     * @param roleId 角色ID
+     * @param menuIds 菜单ID列表
+     * @return 是否成功
      */
     @Override
+    @Transactional
     public boolean updateRoleMenuList(Long roleId, List<Long> menuIds) {
-
         // 删除角色菜单的关联
         roleMenuService.deleteRoleMenu(roleId);
 
@@ -691,148 +692,56 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             roleMenuService.saveBatch(roleMenuList);
         }
 
-        // 刷新角色缓存中的权限
-        this.refreshRolePermsCache(roleId);
+        // 获取角色信息并发布角色菜单更新事件
+        SysRole role = roleService.getById(roleId);
+        if (role != null) {
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED, 
+                    roleId, role.getRoleCode()));
+            log.info("角色菜单更新，已发布权限变更事件: roleId={}, roleCode={}", roleId, role.getRoleCode());
+        }
 
         return true;
     }
 
 
     /**
-     * 初始化缓存
+     * 初始化缓存（已移至RoleCacheService统一管理）
+     * @deprecated 请使用 RoleCacheService.refreshAllRolePermsCache()
      */
+    @Deprecated
     @PostConstruct
     public void initRolePermsCache() {
-        this.refreshRolePermsCache();
+        // 由RoleCacheService统一管理
     }
 
 
     /**
      * 刷新权限缓存 (所有角色)
+     * @deprecated 请使用事件机制
      */
+    @Deprecated
     @Override
     public void refreshRolePermsCache() {
-        // 清理权限缓存
-        redisTemplate.opsForHash().delete(CacheConstants.ROLE_PERMS_PREFIX, "*");
-
-        // 角色列表
-        List<SysRole> roleList = roleService.selectRoleList();
-
-        // 角色id 集合
-        List<Long> roleIds  = roleList.stream()
-                .map(SysRole::getRoleId)
-                .collect(Collectors.toList());
-
-
-
-        // 角色菜单列表
-        List<SysRoleMenu> roleMenuList = roleMenuService.selectRoleMenus(roleIds);
-
-        // menuIds 集合
-        List<Long> menuIds = roleMenuList.stream()
-                .map(SysRoleMenu::getMenuId)
-                .collect(Collectors.toList());
-
-        // menuId 和 perm的关联映射
-        Map<Long, String> menuIdPermMap = this.getMenuIdPermMap(menuIds);
-
-        // roleId 和 menuIds的关联关系
-        Map<Long, List<Long>> roleIdMenuIdsMap = this.roleIdMenuIdsMap(roleMenuList);
-
-
-
-        // 构造角色权限DTO列表
-        roleList.forEach(role -> {
-            // 获取角色对应的所有menuIds
-            List<Long> roleMenuIds = roleIdMenuIdsMap.getOrDefault(role.getRoleId(), Collections.emptyList());
-
-            // 根据menuId 获取权限字符串
-            Set<String> perms = roleMenuIds.stream()
-                    .map(menuId -> menuIdPermMap.getOrDefault(menuId, ""))
-                    .collect(Collectors.toSet());
-
-            // 存储角色权限到redis中
-            redisTemplate.opsForHash().put(CacheConstants.ROLE_PERMS_PREFIX, role.getRoleCode(), perms);
-        });
-
-
+        eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                this, RolePermissionChangedEvent.ChangeType.REFRESH_ALL));
     }
-
-
-
-
-    /**
-     * 查询 menuId 和 perm 的映射关系
-     *
-     * @param menuIds
-     * @return
-     */
-    private Map<Long, String> getMenuIdPermMap(List<Long> menuIds) {
-        LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.in(SysMenu::getMenuId, menuIds);
-        queryWrapper.eq(SysMenu::getStatus, StatusEnum.ENABLE.getValue());
-        queryWrapper.eq(SysMenu::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        List<SysMenu> menuList = this.list(queryWrapper);
-
-        Map<Long, String> menuIdPermMap = menuList.stream()
-                .filter(menu -> StringUtils.isNotBlank(menu.getPerm()))
-                .collect(Collectors.toMap(SysMenu::getMenuId, SysMenu::getPerm));
-        return menuIdPermMap;
-    }
-
-    /**
-     * roleId 和 menuIds的关联关系
-     * @param roleMenuList
-     * @return
-     */
-    private Map<Long, List<Long>> roleIdMenuIdsMap(List<SysRoleMenu> roleMenuList) {
-        Map<Long, List<Long>> roleIdMenuIdsMap = roleMenuList.stream()
-                .collect(Collectors.groupingBy(
-                        SysRoleMenu::getRoleId,
-                        Collectors.mapping(SysRoleMenu::getMenuId, Collectors.toList())
-                ));
-        return roleIdMenuIdsMap;
-    }
-
 
 
     /**
      * 更新指定角色缓存
-     *
-     * @param roleId
+     * @deprecated 请使用事件机制
+     * @param roleId 角色ID
      */
+    @Deprecated
     @Override
     public void refreshRolePermsCache(Long roleId) {
-
-        SysRole role = roleService.getOne(new LambdaQueryWrapper<SysRole>()
-                .eq(SysRole::getRoleId, roleId)
-                .last("limit 1"));
-
-        String roleCode = role.getRoleCode();
-
-        // 清理权限缓存
-        redisTemplate.opsForHash().delete(CacheConstants.ROLE_PERMS_PREFIX, roleCode);
-
-
-
-        List<Long> menuIds = roleMenuService.selectMenuIds(roleId);
-
-        if (CollectionUtils.isNotEmpty(menuIds)) {
-            LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.in(SysMenu::getMenuId, menuIds);
-            queryWrapper.eq(SysMenu::getDeleted, DeletedEnum.NO_DELETE.getValue());
-            queryWrapper.eq(SysMenu::getStatus, StatusEnum.ENABLE.getValue());
-            List<SysMenu> menuList = this.list(queryWrapper);
-
-            Set<String> perms = menuList.stream()
-                    .map(SysMenu::getPerm)
-                    .collect(Collectors.toSet());
-
-            redisTemplate.opsForHash().put(CacheConstants.ROLE_PERMS_PREFIX, roleCode, perms);
-        } else {
-            redisTemplate.opsForHash().put(CacheConstants.ROLE_PERMS_PREFIX, roleCode, Collections.emptySet());
+        SysRole role = roleService.getById(roleId);
+        if (role != null) {
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED,
+                    roleId, role.getRoleCode()));
         }
-
     }
 
 

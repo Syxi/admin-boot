@@ -24,6 +24,11 @@ public class Videos implements Serializable {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 视频名称
      */
     private String fileName;

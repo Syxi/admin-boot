@@ -24,6 +24,11 @@ public class SysUser {
     private Long userId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 用户名
      */
     @TableField(value = "username")

@@ -24,6 +24,11 @@ public class SysSwitchConfig implements Serializable {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 配置名称
      */
     private String configName;

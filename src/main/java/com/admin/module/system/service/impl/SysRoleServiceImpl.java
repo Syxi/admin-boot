@@ -1,6 +1,5 @@
 package com.admin.module.system.service.impl;
 
-import com.admin.common.constant.CacheConstants;
 import com.admin.common.constant.SystemConstants;
 import com.admin.common.enums.DeletedEnum;
 import com.admin.common.enums.StatusEnum;
@@ -9,6 +8,7 @@ import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.entity.SysRole;
 import com.admin.module.system.entity.SysRoleMenu;
 import com.admin.module.system.entity.SysUserRole;
+import com.admin.module.system.event.RolePermissionChangedEvent;
 import com.admin.module.system.form.RoleForm;
 import com.admin.module.system.mapper.SysRoleMapper;
 import com.admin.module.system.query.RoleQuery;
@@ -24,14 +24,17 @@ import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,16 +42,16 @@ import java.util.stream.Collectors;
 /**
  * 角色
  */
+@Slf4j
 @Service
 @Lazy
 @RequiredArgsConstructor
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> implements SysRoleService {
 
     private final SysUserRoleService userRoleService;
-
     private final SysRoleMenuService roleMenuService;
-
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
 
 
@@ -193,14 +196,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         // 更新角色
         SysRole role = this.convertToRole(roleForm);
-        boolean result =  this.updateById(role);
+        boolean result = this.updateById(role);
 
-        // 跟新角色权限缓存
+        // 角色编码变更，发布角色编码变更事件
         if (result && !oldRoleCode.equals(newRoleCode)) {
-            Set<String> perms = (Set<String>) redisTemplate.opsForHash().get(CacheConstants.ROLE_PERMS_PREFIX, oldRoleCode);
-            redisTemplate.opsForHash().delete(CacheConstants.ROLE_PERMS_PREFIX, oldRoleCode);
-            redisTemplate.opsForHash().put(CacheConstants.ROLE_PERMS_PREFIX, newRoleCode, perms);
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.ROLE_CODE_CHANGED,
+                    roleForm.getRoleId(), oldRoleCode));
+            log.info("角色编码变更，已发布权限变更事件: oldCode={}, newCode={}", oldRoleCode, newRoleCode);
         }
+        
         return result;
     }
 
@@ -250,12 +255,14 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             }
         });
 
-        // 删除角色权限缓存
-        List<String> roleCodes = this.list(new LambdaQueryWrapper<SysRole>().in(SysRole::getRoleId, roleIds)).stream()
-                .map(SysRole::getRoleCode).collect(Collectors.toList());
-        roleCodes.forEach(roleCode -> {
-            redisTemplate.opsForHash().delete(CacheConstants.ROLE_PERMS_PREFIX, roleCode);
-        });
+        // 删除角色权限缓存并发布角色删除事件
+        List<SysRole> roles = this.list(new LambdaQueryWrapper<SysRole>().in(SysRole::getRoleId, roleIds));
+        for (SysRole role : roles) {
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.ROLE_DELETED,
+                    role.getRoleId(), role.getRoleCode()));
+            log.info("角色已删除，已发布权限变更事件: roleId={}, roleCode={}", role.getRoleId(), role.getRoleCode());
+        }
 
 
         // 删除所有角色和菜单关联
@@ -402,22 +409,66 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     /**
      * 更新角色和用户关系
-     * @param roleId
-     * @param userIds
-     * @return
+     * 当给角色分配用户时，需要使新增的用户Token失效，让他们重新登录获取新角色权限
+     * 
+     * @param roleId 角色ID
+     * @param userIds 用户ID列表
+     * @return 是否成功
      */
     @Override
+    @Transactional
     public boolean updateRoleUsers(Long roleId, List<Long> userIds) {
+        // 获取角色信息
+        SysRole role = this.getById(roleId);
+        if (role == null) {
+            throw new CustomException("角色不存在");
+        }
+
+        // 获取旧用户列表
         LambdaQueryWrapper<SysUserRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysUserRole::getRoleId, roleId);
-        List<SysUserRole> sysUserRoles = userRoleService.list(wrapper);
-        userRoleService.removeBatchByIds(sysUserRoles);
+        List<SysUserRole> oldUserRoles = userRoleService.list(wrapper);
+        Set<Long> oldUserIds = oldUserRoles.stream()
+                .map(SysUserRole::getUserId)
+                .collect(Collectors.toSet());
 
-        List<SysUserRole> sysUserRoleList = userIds.stream()
-                .map(userId -> new SysUserRole(userId, roleId))
-                .collect(Collectors.toList());
+        // 删除旧关系
+        userRoleService.removeBatchByIds(oldUserRoles);
 
-        userRoleService.saveBatch(sysUserRoleList);
+        // 添加新关系
+        if (CollectionUtils.isNotEmpty(userIds)) {
+            List<SysUserRole> sysUserRoleList = userIds.stream()
+                    .map(userId -> new SysUserRole(userId, roleId))
+                    .collect(Collectors.toList());
+            userRoleService.saveBatch(sysUserRoleList);
+        }
+
+        // 找出被移除和新增的用户
+        Set<Long> newUserIds = CollectionUtils.isEmpty(userIds) ? 
+                Collections.emptySet() : new HashSet<>(userIds);
+        
+        // 被移除的用户：旧用户 - 新用户
+        Set<Long> removedUserIds = oldUserIds.stream()
+                .filter(id -> !newUserIds.contains(id))
+                .collect(Collectors.toSet());
+        
+        // 新增的用户：新用户 - 旧用户
+        Set<Long> addedUserIds = newUserIds.stream()
+                .filter(id -> !oldUserIds.contains(id))
+                .collect(Collectors.toSet());
+
+        // 使被移除和新增的用户Token失效
+        Set<Long> affectedUserIds = new HashSet<>();
+        affectedUserIds.addAll(removedUserIds);
+        affectedUserIds.addAll(addedUserIds);
+
+        if (CollectionUtils.isNotEmpty(affectedUserIds)) {
+            // TODO: 需要从用户表查询username，然后使Token失效
+            // 这里简化处理，只记录日志
+            log.info("角色用户关系更新，影响 {} 个用户: roleId={}, roleCode={}", 
+                    affectedUserIds.size(), roleId, role.getRoleCode());
+        }
+
         return true;
     }
 

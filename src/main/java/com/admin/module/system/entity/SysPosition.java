@@ -20,6 +20,12 @@ public class SysPosition implements Serializable {
     @TableId
     private Long positionId;
 
+
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
+
     /**
      * 岗位名称
      */

@@ -22,6 +22,9 @@ public class UserAuthInfo {
 
     private Integer status;
 
+    // 租户id
+    private Long tenantId;
+
     // 组织id
     private Long deptId;
 

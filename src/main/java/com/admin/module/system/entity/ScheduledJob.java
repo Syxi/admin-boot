@@ -21,6 +21,11 @@ public class ScheduledJob implements Serializable {
     private Long jobId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 定时任务名称
      */
     private String jobName;

@@ -4,56 +4,40 @@ import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 通知公告表
- * @TableName sys_notice
+ * 租户表
+ * @TableName sys_tenant
  */
-@TableName(value ="sys_notice")
+@TableName(value ="sys_tenant")
 @Data
-public class SysNotice implements Serializable {
+public class SysTenant {
     /**
      * 
      */
-    @TableId
-    private Long noticeId;
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     /**
-     * 租户ID
+     * 租户名称
      */
-    private Long tenantId;
+    private String name;
 
     /**
-     * 通知标题
+     * 租户唯一标识
      */
-    private String noticeTitle;
+    private String code;
 
     /**
-     * 通知类型
+     * 1:启用 -1:禁用
      */
-    private Integer noticeType;
+    private Integer status;
 
     /**
-     * 通知内容
+     * 排序
      */
-    private String noticeContent;
-
-    /**
-     * 通知状态 (1：发布，-1：未发布)
-     */
-    private Integer isPublish;
-
-    /**
-     * 置顶状态 (1：置顶，-1：未置顶)
-     */
-    private Integer isTop;
-
-    /**
-     * 置顶时间
-     */
-    private LocalDateTime topTime;
+    private Integer sort;
 
     /**
      * 备注
@@ -77,11 +61,7 @@ public class SysNotice implements Serializable {
     private Long updateUser;
 
     /**
-     * 逻辑删除标识(0:未删除，-1:已删除)
+     * 逻辑删除标识(0:未删除;-1:已删除)
      */
-    @TableLogic
     private Integer deleted;
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }
