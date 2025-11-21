@@ -41,6 +41,11 @@ public class SysUserRole {
     @TableField(value = "role_id")
     private Long roleId;
 
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
+
 
     @TableField(fill = FieldFill.INSERT)
     @JsonInclude(value = JsonInclude.Include.NON_NULL)

@@ -39,4 +39,9 @@ public class JwtClaimConstants {
      */
     public static final String DATA_SCOPE = "dataScope";
 
+    /**
+     * 租户id
+     */
+    public static final String TENANT_ID = "tenantId";
+
 }

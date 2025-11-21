@@ -7,10 +7,8 @@ import com.admin.common.result.ResultCode;
 import com.admin.common.security.SecurityConstants;
 import com.admin.common.security.SysUserDetails;
 import com.admin.common.security.service.TokenService;
-import com.admin.module.system.service.OnlineUserService;
 import com.admin.module.system.vo.AuthTokenVO;
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,6 +23,12 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * JWT Token 服务实现类
+ * 负责JWT Token的生成、解析、校验、刷新和黑名单管理
+ * 
+ * @author suYan
+ */
 @Slf4j
 @ConditionalOnProperty(value = "security.session.type", havingValue = "jwt")
 @Service
@@ -34,125 +38,111 @@ public class JwtTokenServiceImpl implements TokenService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final byte[] secretKeyBytes;
 
-
     public JwtTokenServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate) {
         this.securityProperties = securityProperties;
-        this.secretKeyBytes = securityProperties.getJwt().getKey().getBytes(StandardCharsets.UTF_8);
         this.redisTemplate = redisTemplate;
+        this.secretKeyBytes = securityProperties.getJwt().getKey().getBytes(StandardCharsets.UTF_8);
     }
 
-
-
     /**
-     * 生成认证 Token
+     * 生成认证Token（包括AccessToken和RefreshToken）
      *
      * @param authentication 用户认证信息
-     * @return 认证 Token 响应
+     * @return Token响应对象
      */
     @Override
     public AuthTokenVO generateToken(Authentication authentication) {
-        long accessTokenTimeTOLive = securityProperties.getJwt().getAccessTokenTimeTOLive();
-        long refreshTokenTimeTOLive = securityProperties.getJwt().getRefreshTokenTimeTOLive();
+        long accessTokenTtl = securityProperties.getJwt().getAccessTokenTimeTOLive();
+        long refreshTokenTtl = securityProperties.getJwt().getRefreshTokenTimeTOLive();
 
-        String accessToken = this.createToken(authentication, accessTokenTimeTOLive);
-        String refreshToken = this.createToken(authentication, refreshTokenTimeTOLive);
+        String accessToken = createToken(authentication, accessTokenTtl);
+        String refreshToken = createToken(authentication, refreshTokenTtl);
+        
         return AuthTokenVO.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType(SecurityConstants.JWT_TOKEN_TYPE)
-                .expires(accessTokenTimeTOLive)
+                .expires(accessTokenTtl)
                 .build();
     }
 
     /**
-     * 生成token
+     * 创建JWT Token
+     *
      * @param authentication 认证信息
-     * @param ttl 过去时间
-     * @return
+     * @param ttl 过期时间（秒）
+     * @return JWT Token字符串
      */
     private String createToken(Authentication authentication, Long ttl) {
-        SysUserDetails sysUserDetails = (SysUserDetails) authentication.getPrincipal();
-        Claims claims = Jwts.claims().setSubject(authentication.getName());
+        SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
+        Date now = new Date();
+        String jti = UUID.randomUUID().toString();
 
-        // 添加用户信息到 claims
-        claims.put(JwtClaimConstants.USER_ID, sysUserDetails.getUserId());
-        claims.put(JwtClaimConstants.USER_NAME, claims.getSubject());
-        claims.put(JwtClaimConstants.ORG_ID, sysUserDetails.getDeptId());
-        claims.put(JwtClaimConstants.DATA_SCOPE, sysUserDetails.getDataScope());
-
-        // claims 中添加角色信息
-        Set<String> roles = sysUserDetails.getAuthorities().stream()
+        // 构建Claims
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(JwtClaimConstants.USER_ID, userDetails.getUserId());
+        claims.put(JwtClaimConstants.USER_NAME, authentication.getName());
+        claims.put(JwtClaimConstants.JTI, jti);
+        
+        // 添加角色信息
+        Set<String> roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toSet());
         claims.put(JwtClaimConstants.ROLES, roles);
 
-        // jti  jwt的唯一标识符
-        String jti = UUID.randomUUID().toString();
-        claims.put(JwtClaimConstants.JTI, jti);
-
-        // 当前时间
-        Date now = new Date();
-
-        // 构建 JWT
+        // 构建JWT
         JwtBuilder jwtBuilder = Jwts.builder()
                 .setClaims(claims)
+                .setSubject(authentication.getName())
                 .setId(jti)
-                .setIssuedAt(now);
+                .setIssuedAt(now)
+                .signWith(SignatureAlgorithm.HS256, secretKeyBytes);
 
-        // 设置过期时间，-1表示永不过期
-        if (ttl != -1) {
-            // ttl是秒数，转换为毫秒
+        // 设置过期时间
+        if (ttl != null && ttl > 0) {
             Date expirationTime = new Date(now.getTime() + ttl * 1000L);
             jwtBuilder.setExpiration(expirationTime);
         }
 
-        return jwtBuilder
-                .signWith(Keys.hmacShaKeyFor(secretKeyBytes), SignatureAlgorithm.HS256)
-                .compact();
+        return jwtBuilder.compact();
     }
 
-
-
-
     /**
-     * 获取 token 的Claims, claims中包含了用户的基本信息
+     * 获取Token的Claims
+     *
+     * @param token JWT Token
+     * @return Claims对象
      */
     @Override
     public Claims getTokenClaims(String token) {
         try {
-            Claims claims = Jwts.parserBuilder()
+            return Jwts.parserBuilder()
                     .setSigningKey(secretKeyBytes)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
-            return claims;
         } catch (JwtException e) {
-            log.error("token解析失败：{}", e.getMessage());
+            log.error("Token解析失败：{}", e.getMessage());
             throw new RuntimeException(e);
         }
     }
 
-
     /**
-     * 解析 Token 获取认证信息
+     * 解析Token获取认证信息
      *
      * @param token JWT Token
-     * @return 用户认证信息
+     * @return Authentication对象
      */
     @Override
     public Authentication parseToken(String token) {
         Claims claims = this.getTokenClaims(token);
 
-
         SysUserDetails sysUserDetails = new SysUserDetails();
-        // 用户ID
-        Long userId = claims.get(JwtClaimConstants.USER_ID, Long.class);
-        sysUserDetails.setUserId(userId);
-        // 用户名
-        String username = claims.get(JwtClaimConstants.USER_NAME, String.class);
-        sysUserDetails.setUsername(username);
+        sysUserDetails.setUserId(claims.get(JwtClaimConstants.USER_ID, Long.class));
+        sysUserDetails.setUsername(claims.get(JwtClaimConstants.USER_NAME, String.class));
 
         // 角色集合
+        @SuppressWarnings("unchecked")
         List<SimpleGrantedAuthority> authorities = ((ArrayList<String>) claims.get(JwtClaimConstants.ROLES))
                 .stream()
                 .map(SimpleGrantedAuthority::new)
@@ -162,85 +152,84 @@ public class JwtTokenServiceImpl implements TokenService {
         return new UsernamePasswordAuthenticationToken(sysUserDetails, "", authorities);
     }
 
-
-
     /**
-     * 校验 Token 是否有效
+     * 校验Token是否有效
      *
      * @param token JWT Token
-     * @return 是否有效
+     * @return true-有效 false-无效
      */
     @Override
     public boolean validateToken(String token) {
-        Claims claims;
         try {
-            claims = Jwts.parserBuilder()
+            Claims claims = Jwts.parserBuilder()
                     .setSigningKey(secretKeyBytes)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
+
+            String jti = claims.getId();
+            Date expiration = claims.getExpiration();
+
+            // 检查是否过期
+            boolean isExpire = expiration.before(new Date());
+            if (isExpire) {
+                return false;
+            }
+
+            // 检查是否在黑名单中
+            boolean isBlackToken = Boolean.TRUE.equals(redisTemplate.hasKey(SecurityConstants.BLACK_TOKEN_PREFIX + jti));
+            if (isBlackToken) {
+                log.info("Token在黑名单中: {}", jti);
+                return false;
+            }
+
+            return true;
         } catch (JwtException e) {
-            log.error("验证解析失败{}", e.getMessage());
+            log.error("Token校验失败: {}", e.getMessage());
             return false;
         }
-        String jti = claims.getId();
-        Date expiration = claims.getExpiration();
-
-        boolean isExpire = expiration.before(new Date());
-
-        // 验证token是否在黑名单内
-        boolean isBlackToken = Boolean.TRUE.equals(redisTemplate.hasKey(SecurityConstants.BLACK_TOKEN_PREFIX + jti));
-        if (isBlackToken) {
-            log.info("token {} 在黑名单中", jti);
-            return false; // 在黑名单内无效
-        }
-
-
-        return !isExpire;
     }
 
-
     /**
-     * 刷新 Token
+     * 刷新Token
      *
      * @param refreshToken 刷新令牌
-     * @return 认证 Token 响应
+     * @return 新的Token响应对象
      */
     @Override
     public AuthTokenVO refreshToken(String refreshToken) {
-        Claims claims ;
         try {
-            claims = Jwts.parserBuilder()
+            Claims claims = Jwts.parserBuilder()
                     .setSigningKey(secretKeyBytes)
                     .build()
                     .parseClaimsJws(refreshToken)
                     .getBody();
+
+            Date expiration = claims.getExpiration();
+            boolean isExpire = expiration.after(new Date());
+            if (!isExpire) {
+                throw new CustomException(ResultCode.REFRESH_TOKEN_INVALID.getMsg());
+            }
+
+            Authentication authentication = this.parseToken(refreshToken);
+            Long accessTokenExpiration = securityProperties.getJwt().getAccessTokenTimeTOLive();
+            String newAccessToken = this.createToken(authentication, accessTokenExpiration);
+
+            return AuthTokenVO.builder()
+                    .accessToken(newAccessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType(SecurityConstants.JWT_TOKEN_TYPE)
+                    .expires(accessTokenExpiration)
+                    .build();
+                    
         } catch (JwtException e) {
-            log.error("refreshToken解析失败{} {}", refreshToken, e.getMessage());
+            log.error("刷新Token解析失败: {} {}", refreshToken, e.getMessage());
             throw new CustomException(ResultCode.REFRESH_TOKEN_INVALID.getMsg());
         }
-        Date expiration = claims.getExpiration();
-        boolean isExpire = expiration.after(new Date());
-        if (!isExpire) {
-            throw  new CustomException(ResultCode.REFRESH_TOKEN_INVALID.getMsg());
-        }
-
-        Authentication authentication = this.parseToken(refreshToken);
-        Long accessTokenExpiration = securityProperties.getJwt().getAccessTokenTimeTOLive();
-        String newAccessToken = this.createToken(authentication, accessTokenExpiration);
-
-
-        return AuthTokenVO.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(refreshToken)
-                .tokenType(SecurityConstants.JWT_TOKEN_TYPE)
-                .expires(accessTokenExpiration)
-                .build();
-
     }
 
     /**
-     * 将 Token 加入黑名单
+     * 将Token加入黑名单
      *
      * @param token JWT Token
      */
@@ -248,39 +237,34 @@ public class JwtTokenServiceImpl implements TokenService {
     public void blacklistToken(String token) {
         Long expiration = securityProperties.getJwt().getAccessTokenTimeTOLive();
         try {
-            Claims   claims = Jwts.parserBuilder()
+            Claims claims = Jwts.parserBuilder()
                     .setSigningKey(secretKeyBytes)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
 
-
             String jti = claims.getId();
-
-            // 删除在线用户记录
             String username = claims.get(JwtClaimConstants.USER_NAME, String.class);
+            
+            // 删除在线用户记录
             redisTemplate.delete(SecurityConstants.ONLINE_USER_PREFIX + username);
-
-
-            // 未过期token，将其加入黑名单
+            // 将Token加入黑名单
             redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.SECONDS);
-
+            
         } catch (ExpiredJwtException e) {
+            // Token已过期，仍需清理在线用户和加入黑名单
             Claims claims = e.getClaims();
             String username = claims.get(JwtClaimConstants.USER_NAME, String.class);
-            redisTemplate.delete(SecurityConstants.ONLINE_USER_PREFIX + username);
-
-            // 过期token，将其加入黑名单
             String jti = claims.getId();
+            
+            redisTemplate.delete(SecurityConstants.ONLINE_USER_PREFIX + username);
             redisTemplate.opsForValue().set(SecurityConstants.BLACK_TOKEN_PREFIX + jti, null, expiration, TimeUnit.SECONDS);
-            log.info("token已过期,删除过期token的在线用户记录：{}", username);
+            log.info("Token已过期，删除在线用户记录：{}", username);
+            
         } catch (JwtException e) {
-            log.error("token解析失败：{}", e.getMessage());
+            log.error("Token解析失败：{}", e.getMessage());
             throw new CustomException(ResultCode.TOKEN_INVALID.getMsg());
         }
-
-
-
     }
 
 

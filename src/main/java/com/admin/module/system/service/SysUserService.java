@@ -1,21 +1,20 @@
 package com.admin.module.system.service;
 
+import com.admin.common.excel.export.UserExportVO;
+import com.admin.common.result.ResultVO;
 import com.admin.module.system.dto.PasswordUpdateDTO;
 import com.admin.module.system.dto.UserAuthInfo;
 import com.admin.module.system.dto.UserInfoUpdateDTO;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.service.IService;
-import com.admin.common.result.ResultVO;
 import com.admin.module.system.entity.SysUser;
 import com.admin.module.system.form.UserForm;
 import com.admin.module.system.query.UserQuery;
 import com.admin.module.system.vo.TransferVO;
-import com.admin.common.excel.export.UserExportVO;
 import com.admin.module.system.vo.UserInfoVO;
 import com.admin.module.system.vo.UserVO;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
-import java.util.Set;
 
 public interface SysUserService extends IService<SysUser> {
 
@@ -100,7 +99,7 @@ public interface SysUserService extends IService<SysUser> {
      * @param username
      * @return
      */
-    UserInfoVO getCurrentUserInfo(String username, Set<String> roleCodes);
+    UserInfoVO getCurrentUserInfo(String username);
 
 
     /**

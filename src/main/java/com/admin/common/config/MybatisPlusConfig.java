@@ -6,12 +6,15 @@ import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /**
+ * MyBatis-Plus 配置类
+ * 
  * @author suYan
  * @date 2022/12/13 16:18
  */
@@ -20,30 +23,44 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 public class MybatisPlusConfig {
 
     /**
-     * 分页插件和数据权限插件
-     * @return
+     * MyBatis-Plus 拦截器配置
+     * 包括：分页插件、数据权限插件、乐观锁插件
+     *
+     * @return MybatisPlusInterceptor
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        // 分页插件
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
-        // 数据权限
+
+        // 1. 分页插件，指定数据库类型为MySQL
+        PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor(DbType.MYSQL);
+        paginationInterceptor.setOverflow(false); // 合理化分页参数
+        paginationInterceptor.setMaxLimit(1000L); // 单页最大数量限制
+        interceptor.addInnerInterceptor(paginationInterceptor);
+
+        // 2. 数据权限插件
         interceptor.addInnerInterceptor(new DataPermissionInterceptor(new MyDataPermissionHandler()));
+
+        // 3. 乐观锁插件，防止并发修改数据时出现覆盖问题
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+
+        // 4. 多租户插件（如需要可启用）
+        // interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new MyTenantLineHandler()));
+
         return interceptor;
     }
 
-
     /**
+     * 全局配置
      * 自动填充数据库创建人、创建时间、更新人、更新时间
-     * @return
+     *
+     * @return GlobalConfig
      */
     @Bean
     public GlobalConfig globalConfig() {
         GlobalConfig globalConfig = new GlobalConfig();
         globalConfig.setMetaObjectHandler(new MyMetaObjectHandler());
+        globalConfig.setBanner(false); // 关闭MyBatis-Plus启动banner
         return globalConfig;
     }
-
-
 }

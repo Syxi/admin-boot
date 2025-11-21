@@ -24,67 +24,102 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 处理重复提交的切面
+ * 防止重复提交切面
+ * 使用Redisson分布式锁防止同一用户对同一接口的重复提交
  *
- * @Author: suYan
- * @Date: 2023-12-07
+ * @author suYan
+ * @date 2023-12-07
  */
+@Slf4j
 @Aspect
 @Component
-@Slf4j
 @RequiredArgsConstructor
 public class RepeatSubmitAspect {
 
     private final RedissonClient redissonClient;
+    private final TokenService tokenService;
 
-    public final TokenService tokenService;
-
-    public static final String RESUBMIT_LOCK_PREFIX =  "LOCK:RESUBMIT:";
+    private static final String RESUBMIT_LOCK_PREFIX = "LOCK:RESUBMIT:";
 
     /**
-     * 防重复提交切点
-     * @param noRepeatSubmit
+     * 定义防重复提交切点
+     * 
+     * @param noRepeatSubmit 防重复提交注解
      */
     @Pointcut("@annotation(noRepeatSubmit)")
     public void preventDuplicateSubmitPointCut(NoRepeatSubmit noRepeatSubmit) {
-        log.info("防止重复提交切点");
     }
-
-    @Around("preventDuplicateSubmitPointCut(preventDuplicateSubmit)")
-    public Object doAround(ProceedingJoinPoint joinPoint, NoRepeatSubmit preventDuplicateSubmit) throws Throwable {
-        String resubmitLocKey = generateResubmitLockKey();
-        if (resubmitLocKey != null) {
-            // 防重复提交锁过期时间
-            int expire = preventDuplicateSubmit.expire();
-            RLock rLock = redissonClient.getLock(resubmitLocKey);
-            // 获取锁失败，直接返回 false
-            boolean lockResult = rLock.tryLock(0, expire, TimeUnit.SECONDS);
-            if (!lockResult) {
-                throw new CustomException(SystemConstants.REPEAT_SUBMIT_MSG);
-            }
-        }
-
-        return joinPoint.proceed();
-    }
-
 
     /**
-     * 获取重复提交的锁的 Key
-     * @return
+     * 环绕通知，处理防重复提交逻辑
+     * 
+     * @param joinPoint 连接点
+     * @param preventDuplicateSubmit 防重复提交注解
+     * @return 方法执行结果
+     * @throws Throwable 方法执行异常
+     */
+    @Around("preventDuplicateSubmitPointCut(preventDuplicateSubmit)")
+    public Object doAround(ProceedingJoinPoint joinPoint, NoRepeatSubmit preventDuplicateSubmit) throws Throwable {
+        String resubmitLockKey = generateResubmitLockKey();
+        
+        if (StringUtils.isBlank(resubmitLockKey)) {
+            log.warn("无法生成重复提交锁Key，跳过防重复检查");
+            return joinPoint.proceed();
+        }
+
+        // 获取锁过期时间
+        int expire = preventDuplicateSubmit.expire();
+        RLock rLock = redissonClient.getLock(resubmitLockKey);
+        
+        try {
+            // 尝试获取锁，不等待，过期时间为expire秒
+            boolean lockResult = rLock.tryLock(0, expire, TimeUnit.SECONDS);
+            
+            if (!lockResult) {
+                log.warn("检测到重复提交，lockKey: {}", resubmitLockKey);
+                throw new CustomException(SystemConstants.REPEAT_SUBMIT_MSG);
+            }
+            
+            log.debug("防重复提交锁获取成功，lockKey: {}", resubmitLockKey);
+            return joinPoint.proceed();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取防重复提交锁被中断", e);
+            throw new CustomException("系统繁忙，请稍后再试");
+        }
+    }
+
+    /**
+     * 生成重复提交锁的Key
+     * 格式: LOCK:RESUBMIT:{jti}:{method}-{uri}
+     * 
+     * @return 锁Key，如果无法获取则返回null
      */
     private String generateResubmitLockKey() {
-        String resubmitLockKey = null;
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
-
+        ServletRequestAttributes attributes = 
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        
+        if (attributes == null) {
+            return null;
+        }
+        
+        HttpServletRequest request = attributes.getRequest();
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
+        
+        if (StringUtils.isBlank(token) || !token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
+            return null;
+        }
+        
+        try {
             token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
             Claims claims = tokenService.getTokenClaims(token);
             String jti = claims.getId();
-            resubmitLockKey = RESUBMIT_LOCK_PREFIX + jti + ":" + request.getMethod() + "-" + request.getRequestURI();
+            
+            return RESUBMIT_LOCK_PREFIX + jti + ":" + 
+                   request.getMethod() + "-" + request.getRequestURI();
+        } catch (Exception e) {
+            log.error("解析Token失败", e);
+            return null;
         }
-        return resubmitLockKey;
     }
-
-
 }

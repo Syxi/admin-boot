@@ -452,7 +452,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
     /**
-     *  根据username,获取登录认证信息
+     *  根据username,获取登录认证信息， 存储在 SecurityContext 中
      * @param username 用户名
      * @return User
      */
@@ -505,27 +505,19 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         }
 
-
-
-
-
-
-
-
-
         return userAuthInfo;
     }
 
 
 
     /**
-     * 获取当前登录用户信息
+     * 前端获取当前登录用户信息
      *
      * @param username
      * @return
      */
     @Override
-    public UserInfoVO getCurrentUserInfo(String username, Set<String> roleCodes) {
+    public UserInfoVO getCurrentUserInfo(String username) {
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUsername, username).last("limit 1");
         SysUser user = this.getOne(queryWrapper);
@@ -538,36 +530,34 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userInfoVO.setMobile(user.getMobile());
         userInfoVO.setEmail(user.getEmail());
         userInfoVO.setAvatar(user.getAvatar());
+
         // 用户角色编码
+        List<Long> roleIds = userRoleService.selectRoleIds(user.getUserId());
+        List<SysRole> roleList = roleService.selectRoleList(roleIds);
+        Set<String> roleCodes = roleList.stream()
+                .map(SysRole::getRoleCode)
+                .collect(Collectors.toSet());
         userInfoVO.setRoles(roleCodes);
+
+        // 角色名称
+        String roleNames = roleList.stream()
+                .map(SysRole::getRoleName)
+                .collect(Collectors.joining(","));
+        userInfoVO.setRoleNames(roleNames);
 
 
         if (CollectionUtils.isNotEmpty(roleCodes)) {
-            // 角色集合
-            LambdaQueryWrapper<SysRole> roleQueryWrapper = new LambdaQueryWrapper<>();
-            roleQueryWrapper.in(SysRole::getRoleCode, roleCodes);
-            List<SysRole> roleList = roleService.list(roleQueryWrapper);
-
-            Set<Long> roleIds = roleList.stream()
-                    .map(SysRole::getRoleId)
-                    .collect(Collectors.toSet());
-
-            List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
+            Set<Long> roleIdsSet = new HashSet<>(roleIds);
+            List<Long> menuIds = roleMenuService.selectMenuIds(roleIdsSet );
 
             // 用户权限标识
             Set<String> permissions = menuService.selectMenuPerms(menuIds);
             userInfoVO.setPerms(permissions);
 
-            // 角色名称
-            String roleNames = roleList.stream()
-                            .map(SysRole::getRoleName)
-                            .collect(Collectors.joining(","));
-            userInfoVO.setRoleNames(roleNames);
+
         }
 
         // 用户部门名称
-
-
         // 用户最后登录时间
         LambdaQueryWrapper<UserLoginLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserLoginLog::getUserId, user.getUserId());
@@ -578,11 +568,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             LocalDateTime lastLoginTime = userLoginLog.getLoginTime();
             userInfoVO.setLastLoginTime(lastLoginTime);
         }
-
-
-
-
-
         return userInfoVO;
     }
 
@@ -598,6 +583,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private UserAuthInfo convertToUserAuthInfo(SysUser user) {
         UserAuthInfo userAuthInfo = new UserAuthInfo();
         userAuthInfo.setUserId(user.getUserId());
+//        userAuthInfo.setTenantId(user.getTenantId());
         userAuthInfo.setUsername(user.getUsername());
         userAuthInfo.setPassword(user.getPassword());
         userAuthInfo.setRealName(user.getRealName());

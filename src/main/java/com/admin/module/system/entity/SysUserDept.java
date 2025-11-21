@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
 /**
  * 用户和部门关联表
@@ -32,6 +31,11 @@ public class SysUserDept {
      * 组织id
      */
     private Long deptId;
+
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
 
     @TableField(fill = FieldFill.INSERT)
     @JsonInclude(value = JsonInclude.Include.NON_NULL)

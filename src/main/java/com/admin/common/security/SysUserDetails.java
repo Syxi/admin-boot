@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 封装 MyUserDetailsServiceImpl查询的用户信息
+ * 封装 MyUserDetailsServiceImpl查询的用户信息，存储在 SecurityContext 中
  * @author suYan
  * @date 2023/4/5 16:01
  */
@@ -36,6 +36,8 @@ public class SysUserDetails implements UserDetails {
     private Long deptId;
 
     private Integer dataScope;
+
+//    private Long tenantId;
 
     @Schema(description = "账号是否可用")
     private Boolean enabled;

@@ -25,6 +25,11 @@ public class OnlineUser {
     private Long userId;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 用户名
      */
     private String username;

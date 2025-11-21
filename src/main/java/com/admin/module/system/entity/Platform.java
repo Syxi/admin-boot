@@ -20,6 +20,11 @@ public class Platform {
     private Long id;
 
     /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
      * 平台名称
      */
     private String name;
