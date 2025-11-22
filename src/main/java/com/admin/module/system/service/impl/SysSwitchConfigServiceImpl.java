@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author sy
@@ -36,7 +38,7 @@ public class SysSwitchConfigServiceImpl extends ServiceImpl<SysSwitchConfigMappe
     private final RedisTemplate<String, String> redisTemplate;
 
     /**
-     * 初始化系统业务开关缓存
+     * 初始化系统业务开关缓存（优化版：批量写入Redis）
      *
      * @return
      */
@@ -47,10 +49,13 @@ public class SysSwitchConfigServiceImpl extends ServiceImpl<SysSwitchConfigMappe
         List<SysSwitchConfig> sysSwitchConfigList = this.list();
 
         if (CollectionUtils.isNotEmpty(sysSwitchConfigList)) {
+            // 优化：使用批量操作替代for循环
+            Map<String, String> configMap = new HashMap<>();
             for (SysSwitchConfig sysSwitchConfig : sysSwitchConfigList) {
-                // 缓存
-                redisTemplate.opsForValue().set(sysSwitchConfig.getConfigKey(), sysSwitchConfig.getConfigValue());
+                configMap.put(sysSwitchConfig.getConfigKey(), sysSwitchConfig.getConfigValue());
             }
+            // 批量写入Redis
+            redisTemplate.opsForValue().multiSet(configMap);
         }
 
         log.info("缓存系统业务开关配置结束，耗时：{}", ChronoUnit.SECONDS.between(startTime, Instant.now()));

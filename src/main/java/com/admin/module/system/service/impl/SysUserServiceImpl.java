@@ -66,16 +66,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
     /**
-     * 获取用户分页列表
+     * 获取用户分页列表（优化版：按需查询，避免全表加载）
      * @param userQuery
      * @return
      */
     @Override
     public IPage<UserVO> selectUserPage(UserQuery userQuery) {
-        List<SysUserDept> userDeptList = sysUserDeptService.list();
-
-        Map<Long, List<Long>> deptIdUserIdsMap = buildDeptIdUserIdListMap(userDeptList);
-
+        // 1. 先构建查询条件，查询用户主表
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         // 不是管理员，不显示 admin
         if (!SecurityUtils.isAdmin()) {
@@ -90,16 +87,22 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (StringUtils.isNotEmpty(userQuery.getRealName())) {
             queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
         }
-        // 部门
+        
+        // 2. 如果按部门筛选，只查询该部门下的用户ID（按需查询）
         if (userQuery.getDeptId() != null) {
-            List<Long> userIds = deptIdUserIdsMap.get(userQuery.getDeptId());
-            if (CollectionUtils.isNotEmpty(userIds)) {
-                queryWrapper.in(SysUser::getUserId, userIds);
-            } else {
-                // 返回一个带分页信息的空对象
+            List<SysUserDept> userDeptList = sysUserDeptService.list(
+                new LambdaQueryWrapper<SysUserDept>()
+                    .eq(SysUserDept::getDeptId, userQuery.getDeptId())
+            );
+            if (CollectionUtils.isEmpty(userDeptList)) {
                 return new Page<>(userQuery.getPage(), userQuery.getLimit());
             }
+            List<Long> userIds = userDeptList.stream()
+                .map(SysUserDept::getUserId)
+                .collect(Collectors.toList());
+            queryWrapper.in(SysUser::getUserId, userIds);
         }
+        
         // 用户状态
         if (userQuery.getStatus() != null) {
             queryWrapper.eq(SysUser::getStatus, userQuery.getStatus());
@@ -109,42 +112,131 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             queryWrapper.between(SysUser::getCreateTime, userQuery.getStartTime(), userQuery.getEndTime());
         }
         queryWrapper.orderByDesc(SysUser::getCreateTime);
+        
+        // 3. 分页查询用户主表
         IPage<SysUser> page = new Page<>(userQuery.getPage(), userQuery.getLimit());
         IPage<SysUser> pageData = this.page(page, queryWrapper);
-
-        // userId、roleNames存储在map中，key是userId, value是roleNames
-        Map<Long, List<String>> userIdRoleNamesMap = this.buildUserIdRoleNamesMap();
-
-        // dept 的id、name的关系存储在map中，key是id, name是value
-        Map<Long, String> deptIdNameMap = this.buildDeptIdDeptNamesMap();
-
-        // userId、deptId存储在map中，key是userId, value是deptId
-        Map<Long, Long> userIdDeptIdMap = this.buildUserIdDeptIdMap(userDeptList);
-
+        
+        if (CollectionUtils.isEmpty(pageData.getRecords())) {
+            return new Page<>(userQuery.getPage(), userQuery.getLimit());
+        }
+        
+        // 4. 只查询当前页用户的关联数据（按需查询，不是全表）
+        List<Long> currentPageUserIds = pageData.getRecords().stream()
+            .map(SysUser::getUserId)
+            .collect(Collectors.toList());
+        
+        // 只查询当前页用户的部门关系
+        Map<Long, Long> userIdDeptIdMap = buildUserIdDeptIdMapByUserIds(currentPageUserIds);
+        
+        // 只查询当前页用户涉及的部门信息
+        Set<Long> deptIds = new HashSet<>(userIdDeptIdMap.values());
+        Map<Long, String> deptIdNameMap = buildDeptIdNameMapByDeptIds(new ArrayList<>(deptIds));
+        
+        // 只查询当前页用户的角色信息
+        Map<Long, List<String>> userIdRoleNamesMap = buildUserIdRoleNamesMapByUserIds(currentPageUserIds);
+        
+        // 5. 组装VO
         IPage<UserVO> userVOIPage = pageData.convert(user -> {
-            // user 转 userVO
             UserVO userVO = this.convertToUserVO(user);
-
+            
             List<String> roleNameList = userIdRoleNamesMap.getOrDefault(user.getUserId(), Collections.emptyList());
             String roleNames = String.join(",", roleNameList);
             userVO.setRoleNames(roleNames);
-
+            
             Long deptId = userIdDeptIdMap.get(user.getUserId());
             String deptName = deptIdNameMap.get(deptId);
             userVO.setDeptName(deptName);
-
+            
             return userVO;
         });
-
-
+        
         return userVOIPage;
     }
 
 
     /**
-     * userId、roleNames存储在map中，key是userId, value是roleNames
+     * 按用户ID列表查询部门关系（按需查询）
+     * @param userIds
      * @return
      */
+    private Map<Long, Long> buildUserIdDeptIdMapByUserIds(List<Long> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return Collections.emptyMap();
+        }
+        List<SysUserDept> userDeptList = sysUserDeptService.list(
+            new LambdaQueryWrapper<SysUserDept>()
+                .in(SysUserDept::getUserId, userIds)
+        );
+        return userDeptList.stream()
+            .collect(Collectors.toMap(SysUserDept::getUserId, SysUserDept::getDeptId, (v1, v2) -> v1));
+    }
+
+    /**
+     * 按部门ID列表查询部门名称（按需查询 + 缓存）
+     * @param deptIds
+     * @return
+     */
+    private Map<Long, String> buildDeptIdNameMapByDeptIds(List<Long> deptIds) {
+        if (CollectionUtils.isEmpty(deptIds)) {
+            return Collections.emptyMap();
+        }
+        List<SysDept> deptList = sysDeptService.list(
+            new LambdaQueryWrapper<SysDept>()
+                .in(SysDept::getId, deptIds)
+        );
+        return deptList.stream()
+            .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName, (v1, v2) -> v1));
+    }
+
+    /**
+     * 按用户ID列表查询角色名称（按需查询）
+     * @param userIds
+     * @return
+     */
+    private Map<Long, List<String>> buildUserIdRoleNamesMapByUserIds(List<Long> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return Collections.emptyMap();
+        }
+        
+        // 只查询当前用户的角色关系
+        List<SysUserRole> userRoleList = userRoleService.list(
+            new LambdaQueryWrapper<SysUserRole>()
+                .in(SysUserRole::getUserId, userIds)
+        );
+        
+        if (CollectionUtils.isEmpty(userRoleList)) {
+            return Collections.emptyMap();
+        }
+        
+        List<Long> roleIds = userRoleList.stream()
+            .map(SysUserRole::getRoleId)
+            .distinct()
+            .collect(toList());
+        
+        // 只查询涉及的角色
+        List<SysRole> roleList = roleService.selectRoleList(roleIds);
+        Map<Long, String> roleIdRoleNameMap = roleList.stream()
+            .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName, (v1, v2) -> v1));
+        
+        return userRoleList.stream()
+            .collect(Collectors.groupingBy(
+                SysUserRole::getUserId,
+                Collectors.mapping(
+                    userRole -> Optional.ofNullable(roleIdRoleNameMap.get(userRole.getRoleId()))
+                        .orElse("用户还没有分配角色"),
+                    Collectors.toList()
+                )
+            ));
+    }
+
+
+    /**
+     * userId、roleNames存储在map中，key是userId, value是roleNames
+     * @deprecated 已优化为 buildUserIdRoleNamesMapByUserIds，此方法仅作为备用
+     * @return
+     */
+    @Deprecated
     private Map<Long, List<String>> buildUserIdRoleNamesMap() {
         // 用户角色关联表
         List<SysUserRole> userRoleList = userRoleService.list();

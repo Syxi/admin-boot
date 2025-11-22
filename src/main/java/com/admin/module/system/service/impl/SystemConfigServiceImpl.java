@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author sy
@@ -30,7 +32,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
 
 
     /**
-     * 初始化系统配置缓存
+     * 初始化系统配置缓存（优化版：批量写入Redis）
      *
      * @return
      */
@@ -40,9 +42,13 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         Instant startTime = Instant.now();
         List<SystemConfig> systemConfigList = this.list();
         if (CollectionUtils.isNotEmpty(systemConfigList)) {
+            // 优化：使用批量操作替代for循环
+            Map<String, String> configMap = new HashMap<>();
             for (SystemConfig systemConfig : systemConfigList) {
-                redisTemplate.opsForValue().set(systemConfig.getConfigKey(), systemConfig.getConfigValue());
+                configMap.put(systemConfig.getConfigKey(), systemConfig.getConfigValue());
             }
+            // 批量写入Redis
+            redisTemplate.opsForValue().multiSet(configMap);
         }
 
         log.info("缓存系统配置结束，耗时： {}", ChronoUnit.SECONDS.between(startTime, Instant.now()));
