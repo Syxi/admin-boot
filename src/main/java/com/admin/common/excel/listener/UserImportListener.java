@@ -73,6 +73,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     // 校验结果列表
     List<ImportUserFailVO> userFailVOList = new ArrayList<>();
 
+    // 批量插入大小
+    private static final int BATCH_SIZE = 1000;
 
 
 
@@ -185,6 +187,11 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             importVOList.add(userImportVO);
 
             validCount++;
+            
+            // 批量处理
+            if (userList.size() >= BATCH_SIZE) {
+                saveBatchData();
+            }
 
         } else {
             // 校验检测失败结果
@@ -221,7 +228,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     }
 
 
-
     /**
      * 所有数据解析完成会来调用
      * @param analysisContext
@@ -229,6 +235,65 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+        try {
+            // 处理剩余的数据
+            if (!userList.isEmpty()) {
+                saveBatchData();
+            }
+        } catch (Exception e) {
+            log.error("用户导入过程中发生异常", e);
+            throw e; // 重新抛出异常，让上层能够捕获到
+        }
+    }
+
+
+    /**
+     * 将用户和角色的映射关系转换为一个 SysUserRole 列表
+     * @param userIdUserNameMap
+     * @param roleIdRoleNameMap
+     * @return
+     */
+    private List<SysUserRole> getUserRoleList(Map<Long, String> userIdUserNameMap, Map<Long, String> roleIdRoleNameMap) {
+        List<SysUserRole> userRoles = new ArrayList<>();
+
+        Map<String, Long> usernameToUserIdMap = userIdUserNameMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+
+        Map<String, Long> roleNameToRoleIdMap = roleIdRoleNameMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+
+        for (Map.Entry<String, List<String>> entry : usernameRoleNamesMap.entrySet()) {
+            String username = entry.getKey();
+            List<String> roleNames = entry.getValue();
+
+            // 通过 userIdUserNameMap 找到 usrId
+            Long userId = usernameToUserIdMap.get(username);
+            // 跳过未找到用户的记录
+            if (userId == null) {
+                continue;
+            }
+
+            // 通过 roleIdRoleNameMap 找到 roleId
+            for (String roleName : roleNames) {
+                Long roleId = roleNameToRoleIdMap.get(roleName);
+                    // 未找到对应的 roleId，则跳过当前循环
+                    if (roleId == null) {
+                        continue;
+                    }
+
+                    SysUserRole userRole = new SysUserRole();
+                    userRole.setUserId(userId);
+                    userRole.setRoleId(roleId);
+                    userRoles.add(userRole);
+                }
+            }
+
+
+        return userRoles;
+    }
+
+
+    private void saveBatchData() {
         try {
             // 批量保存用户
             boolean result = sysUserService.saveBatch(userList);
@@ -285,54 +350,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             throw e; // 重新抛出异常，让上层能够捕获到
         }
     }
-
-
-    /**
-     * 将用户和角色的映射关系转换为一个 SysUserRole 列表
-     * @param userIdUserNameMap
-     * @param roleIdRoleNameMap
-     * @return
-     */
-    private List<SysUserRole> getUserRoleList(Map<Long, String> userIdUserNameMap, Map<Long, String> roleIdRoleNameMap) {
-        List<SysUserRole> userRoles = new ArrayList<>();
-
-        Map<String, Long> usernameToUserIdMap = userIdUserNameMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
-
-        Map<String, Long> roleNameToRoleIdMap = roleIdRoleNameMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
-
-        for (Map.Entry<String, List<String>> entry : usernameRoleNamesMap.entrySet()) {
-            String username = entry.getKey();
-            List<String> roleNames = entry.getValue();
-
-            // 通过 userIdUserNameMap 找到 usrId
-            Long userId = usernameToUserIdMap.get(username);
-            // 跳过未找到用户的记录
-            if (userId == null) {
-                continue;
-            }
-
-            // 通过 roleIdRoleNameMap 找到 roleId
-            for (String roleName : roleNames) {
-                Long roleId = roleNameToRoleIdMap.get(roleName);
-                    // 未找到对应的 roleId，则跳过当前循环
-                    if (roleId == null) {
-                        continue;
-                    }
-
-                    SysUserRole userRole = new SysUserRole();
-                    userRole.setUserId(userId);
-                    userRole.setRoleId(roleId);
-                    userRoles.add(userRole);
-                }
-            }
-
-
-        return userRoles;
-    }
-
-
 
 
     /**
