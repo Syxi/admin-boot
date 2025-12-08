@@ -44,13 +44,10 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     private final Set<String> existingRoleNames;
 
-    private final Set<String> existingOrganNames;
-
-    private final Set<String> existingDeptNames;
-
-    private final Map<String, Long> deptNameOrganIdMap;
-
-    private final Map<Long, String> parantIdOrganNameMap;
+    private final Set<String> existingDeptCodes;
+    
+    // 部门编码映射到id
+    private final Map<String, Long> deptCodeIdMap;
 
     // 有效条数
     private int validCount;
@@ -75,9 +72,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     // 校验结果列表
     List<ImportUserFailVO> userFailVOList = new ArrayList<>();
-
-
-
 
 
 
@@ -112,32 +106,18 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         wrapper.eq(SysDept::getDeleted, DeletedEnum.NO_DELETE.getValue());
         List<SysDept> sysOrganizationList = sysDeptService.list(wrapper);
 
-        // 加载所有组织名称
-        this.existingOrganNames = sysOrganizationList.stream()
-                .filter(organ ->  OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
-                .map(SysDept::getDeptName)
+        // 加载所有部门编码
+        this.existingDeptCodes = sysOrganizationList.stream()
+                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
+                .map(SysDept::getDeptCode)
                 .collect(Collectors.toSet());
 
-        // 加载所有部门名称
-        this.existingDeptNames = sysOrganizationList.stream()
+        // 部门编码映射到id
+        this.deptCodeIdMap = sysOrganizationList.stream()
                 .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
-                .map(SysDept::getDeptName)
-                .collect(Collectors.toSet());
-
-        // id 映射 机构名称
-        this.parantIdOrganNameMap = sysOrganizationList.stream()
-                .filter(organ ->  OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
-                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
-
-        // 机构-部门名称组合映射到id
-        this.deptNameOrganIdMap = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
-                .collect(Collectors.toMap(
-                        organ -> parantIdOrganNameMap.get(organ.getParentId()) + "-" + organ.getDeptName(),
-                        SysDept::getId));
+                .collect(Collectors.toMap(SysDept::getDeptCode, SysDept::getId));
 
     }
-
 
 
     /**
@@ -154,8 +134,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         StringBuilder validationMsg = new StringBuilder();
         String userName = userImportVO.getUsername();
         String roleNames = userImportVO.getRoleNames();
-        String organName = userImportVO.getOrganName();
-        String deptName = userImportVO.getDeptName();
+        String deptCode = userImportVO.getDeptCode();
 
         // 校验用户名
         if (StringUtils.isBlank(userName)) {
@@ -164,16 +143,11 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             validationMsg.append("用户名已存在");
         }
 
-        // 校验组织
-        if (StringUtils.isBlank(organName)) {
-            validationMsg.append("机构名称不能为空");
-        } else if (!existingOrganNames.contains(organName)) {
-            validationMsg.append("系统中不存在这机构 ").append(organName);
-        }
-
-        // 校验部门名称
-        if (existingDeptNames != null && !existingDeptNames.contains(deptName)) {
-            validationMsg.append("系统中不存在这部门 ").append(deptName);
+        // 校验部门编码
+        if (StringUtils.isBlank(deptCode)) {
+            validationMsg.append("部门编码不能为空");
+        } else if (existingDeptCodes != null && !existingDeptCodes.contains(deptCode)) {
+            validationMsg.append("系统中不存在这部门编码 ").append(deptCode);
         }
 
         // 校验角色名称
@@ -219,8 +193,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             resultVO.setMsg(validationMsg.toString());
             resultVO.setUsername(userName);
             resultVO.setRoleNames(roleNames);
-            resultVO.setOrganName(organName);
-            resultVO.setDeptName(deptName);
+            resultVO.setDeptName(deptCode); // 注意这里我们使用deptCode变量存储部门编码
             resultVO.setMobile(userImportVO.getMobile());
             resultVO.setEmail(userImportVO.getEmail());
             userFailVOList.add(resultVO);
@@ -238,7 +211,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         user.setRealName(userImportVO.getRealName());
         user.setMobile(userImportVO.getMobile());
         user.setEmail(userImportVO.getEmail());
-        Long deptId = deptNameOrganIdMap.get(userImportVO.getOrganName() + "-" + userImportVO.getDeptName());
+        Long deptId = deptCodeIdMap.get(userImportVO.getDeptCode());
         if (deptId != null) {
             // 这里暂时不保存，只记录映射关系，user.getUserId()是数据库自动生成，user.getUserId()现在还是null
             userIdDeptIdMap.put(user.getUserId(), deptId);
@@ -256,14 +229,19 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void doAfterAllAnalysed(AnalysisContext analysisContext) {
-        // 批量保存用户
-        boolean result = sysUserService.saveBatch(userList);
+        try {
+            // 批量保存用户
+            boolean result = sysUserService.saveBatch(userList);
+            
+            if (!result) {
+                log.error("批量保存用户失败");
+                return;
+            }
 
-        // roleId 和 roleName映射集合
-        Map<Long, String> roleIdRoleNameMap = roleService.list().stream()
-                .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName));
+            // roleId 和 roleName映射集合
+            Map<Long, String> roleIdRoleNameMap = roleService.list().stream()
+                    .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName));
 
-        if (result) {
             // userId 和 userName映射集合
             List<SysUser> sysUserList = sysUserService.list();
             Map<Long, String> userIdUserNameMap = sysUserList.stream()
@@ -273,7 +251,10 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             userRoleList = getUserRoleList(userIdUserNameMap, roleIdRoleNameMap);
             // 批量保存用户角色关联表
            if (CollectionUtils.isNotEmpty(userRoleList)) {
-               userRoleService.saveBatch(userRoleList);
+               boolean roleResult = userRoleService.saveBatch(userRoleList);
+               if (!roleResult) {
+                   log.error("批量保存用户角色关联失败");
+               }
            }
 
            Map<String, Long> usernameToUserIdMap = sysUserList.stream()
@@ -283,10 +264,9 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             List<SysUserDept> userDeptList = new ArrayList<>();
            for (UserImportVO userImportVO : importVOList) {
                String userName = userImportVO.getUsername();
-               String deptName = userImportVO.getDeptName();
-               String organName = userImportVO.getOrganName();
+               String deptCode = userImportVO.getDeptCode();
 
-               Long deptId = deptNameOrganIdMap.get(organName + "-" + deptName);
+               Long deptId = deptCodeIdMap.get(deptCode);
                Long userId = usernameToUserIdMap.get(userName);
 
                if (deptId != null && userId != null) {
@@ -295,11 +275,15 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
            }
 
            if (CollectionUtils.isNotEmpty(userDeptList)) {
-               sysUserDeptService.saveBatch(userDeptList);
+               boolean deptResult = sysUserDeptService.saveBatch(userDeptList);
+               if (!deptResult) {
+                   log.error("批量保存用户部门关联失败");
+               }
            }
+        } catch (Exception e) {
+            log.error("用户导入过程中发生异常", e);
+            throw e; // 重新抛出异常，让上层能够捕获到
         }
-
-
     }
 
 

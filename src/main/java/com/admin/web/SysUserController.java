@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -201,11 +202,16 @@ public class SysUserController {
     @PostMapping("/import")
     public ResultVO<ImportResult> importUsers(
             @RequestParam("file") MultipartFile file) throws IOException {
-        UserImportListener listener = new UserImportListener();
-        ImportResult result = ExcelUtil.importExcel(
-                file.getInputStream(), UserImportVO.class, listener
-        );
-        return ResultVO.success(result);
+        try {
+            UserImportListener listener = new UserImportListener();
+            ImportResult result = ExcelUtil.importExcel(
+                    file.getInputStream(), UserImportVO.class, listener
+            );
+            return ResultVO.success(result);
+        } catch (Exception e) {
+            log.error("导入用户失败", e);
+            return ResultVO.error("导入用户失败: " + e.getMessage());
+        }
     }
 
     /**

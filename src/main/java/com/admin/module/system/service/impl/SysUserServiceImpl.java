@@ -1,10 +1,7 @@
 package com.admin.module.system.service.impl;
 
 import com.admin.common.constant.SystemConstants;
-import com.admin.common.enums.DeletedEnum;
-import com.admin.common.enums.GenderEnum;
-import com.admin.common.enums.IBaseEnum;
-import com.admin.common.enums.StatusEnum;
+import com.admin.common.enums.*;
 import com.admin.common.excel.export.UserExportVO;
 import com.admin.common.exception.CustomException;
 import com.admin.common.result.ResultVO;
@@ -707,8 +704,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         List<SysDept> deptList = sysDeptService.list();
         Map<Long, String> deptIdNameMap = deptList.stream()
                 .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
-
-
+        
+        // 机构ID和机构名称映射（只包含机构类型）
+        Map<Long, String> orgIdNameMap = deptList.stream()
+                .filter(dept -> OrganizationTypeEnum.ORGANIZATION.getValue().equals(dept.getDeptType()))
+                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
 
         // userId 和 roleNames 映射
         Map<Long, List<String>> userIdRoleNamesMap = buildUserIdToRoleNamesMapping();
@@ -725,12 +725,61 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     if (deptId != null) {
                         String deptName = deptIdNameMap.getOrDefault(deptId, "");
                         userExportVO.setDeptName(deptName);
+                        
+                        // 机构名称（通过部门找上级机构）
+                        String orgName = findOrgNameByDeptId(deptId, deptList);
+                        userExportVO.setOrgName(orgName);
                     }
                 })
                 .collect(toList());
 
-
         return userExportVOS;
+    }
+
+    /**
+     * 根据部门ID查找所属机构名称
+     * @param deptId 部门ID
+     * @param deptList 所有部门/机构列表
+     * @return 机构名称
+     */
+    private String findOrgNameByDeptId(Long deptId, List<SysDept> deptList) {
+        if (deptId == null) {
+            return "";
+        }
+        
+        // 创建ID到部门的映射
+        Map<Long, SysDept> idDeptMap = deptList.stream()
+                .collect(Collectors.toMap(SysDept::getId, dept -> dept));
+        
+        // 查找当前部门
+        SysDept currentDept = idDeptMap.get(deptId);
+        if (currentDept == null) {
+            return "";
+        }
+        
+        // 如果当前部门就是机构，直接返回名称
+        if (OrganizationTypeEnum.ORGANIZATION.getValue().equals(currentDept.getDeptType())) {
+            return currentDept.getDeptName();
+        }
+        
+        // 如果当前是部门，查找其父级机构
+        Long parentId = currentDept.getParentId();
+        while (parentId != null && parentId != 0) {
+            SysDept parentDept = idDeptMap.get(parentId);
+            if (parentDept == null) {
+                break;
+            }
+            
+            // 如果父级是机构，返回机构名称
+            if (OrganizationTypeEnum.ORGANIZATION.getValue().equals(parentDept.getDeptType())) {
+                return parentDept.getDeptName();
+            }
+            
+            // 继续向上查找
+            parentId = parentDept.getParentId();
+        }
+        
+        return "";
     }
 
 
