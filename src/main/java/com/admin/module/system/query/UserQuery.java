@@ -15,11 +15,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 @Data
 public class UserQuery extends BasePage {
 
-    @Schema(description = "用户账号")
-    private String username;
-
-    @Schema(description = "真实姓名")
-    private String realName;
+    @Schema(description = "用户账号或真实姓名")
+    private String keywords;
 
     @Schema(description = "部门id")
     private Long deptId;

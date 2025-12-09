@@ -75,15 +75,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (!SecurityUtils.isAdmin()) {
             queryWrapper.ne(SysUser::getUsername, SystemConstants.ADMIN_ROLE_NAME);
         }
-        // 用户名
-        if (StringUtils.isNotEmpty(userQuery.getUsername())) {
-            queryWrapper.like(SysUser::getUsername, userQuery.getUsername())
-                    .or().like(SysUser::getRealName, userQuery.getUsername());
+        // 用户名或真实姓名
+        if (StringUtils.isNotBlank(userQuery.getKeywords())) {
+            queryWrapper.like(SysUser::getUsername, userQuery.getKeywords())
+                    .or().like(SysUser::getRealName, userQuery.getKeywords());
         }
-        // 真实姓名
-        if (StringUtils.isNotEmpty(userQuery.getRealName())) {
-            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
-        }
+        //
+//        if (StringUtils.isNotEmpty(userQuery.getRealName())) {
+//            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
+//        }
         
         // 2. 如果按部门筛选，只查询该部门下的用户ID（按需查询）
         if (userQuery.getDeptId() != null) {
