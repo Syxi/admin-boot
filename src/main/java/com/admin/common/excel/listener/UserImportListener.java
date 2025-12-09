@@ -44,11 +44,12 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     private final Set<String> existingRoleNames;
 
-    private final Set<String> existingDeptCodes;
+    // 机构名称集合
+    private final Set<String> existingOrgNames;
     
-    // 部门编码映射到id
-    private final Map<String, Long> deptCodeIdMap;
-
+    // 部门名称集合
+    private final Set<String> existingDeptNames;
+    
     // 有效条数
     private int validCount;
 
@@ -76,7 +77,11 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     // 批量插入大小
     private static final int BATCH_SIZE = 1000;
 
-
+    // 部门名称到ID的映射（考虑同名部门在不同组织的情况）
+    private final Map<String, List<SysDept>> deptNameListMap;
+    
+    // 机构名称到ID的映射
+    private final Map<String, List<SysDept>> orgNameListMap;
 
     public UserImportListener() {
         PasswordEncoder passwordEncoder = SpringContextUtil.getBean(PasswordEncoder.class);
@@ -108,17 +113,27 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         wrapper.eq(SysDept::getDeleted, DeletedEnum.NO_DELETE.getValue());
         List<SysDept> sysOrganizationList = sysDeptService.list(wrapper);
 
-        // 加载所有部门编码
-        this.existingDeptCodes = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
-                .map(SysDept::getDeptCode)
+        // 加载所有机构名称
+        this.existingOrgNames = sysOrganizationList.stream()
+                .filter(organ -> OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
+                .map(SysDept::getDeptName)
                 .collect(Collectors.toSet());
 
-        // 部门编码映射到id
-        this.deptCodeIdMap = sysOrganizationList.stream()
+        // 加载所有部门名称
+        this.existingDeptNames = sysOrganizationList.stream()
                 .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
-                .collect(Collectors.toMap(SysDept::getDeptCode, SysDept::getId));
+                .map(SysDept::getDeptName)
+                .collect(Collectors.toSet());
 
+        // 部门名称映射到部门列表（处理同名部门在不同组织的情况）
+        this.deptNameListMap = sysOrganizationList.stream()
+                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
+                .collect(Collectors.groupingBy(SysDept::getDeptName));
+                
+        // 机构名称映射到机构列表
+        this.orgNameListMap = sysOrganizationList.stream()
+                .filter(organ -> OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
+                .collect(Collectors.groupingBy(SysDept::getDeptName));
     }
 
 
@@ -136,7 +151,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         StringBuilder validationMsg = new StringBuilder();
         String userName = userImportVO.getUsername();
         String roleNames = userImportVO.getRoleNames();
-        String deptCode = userImportVO.getDeptCode();
+        String orgName = userImportVO.getOrgName();
+        String deptName = userImportVO.getDeptName();
 
         // 校验用户名
         if (StringUtils.isBlank(userName)) {
@@ -145,11 +161,18 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             validationMsg.append("用户名已存在");
         }
 
-        // 校验部门编码
-        if (StringUtils.isBlank(deptCode)) {
-            validationMsg.append("部门编码不能为空");
-        } else if (existingDeptCodes != null && !existingDeptCodes.contains(deptCode)) {
-            validationMsg.append("系统中不存在这部门编码 ").append(deptCode);
+        // 校验机构名称
+        if (StringUtils.isBlank(orgName)) {
+            validationMsg.append("机构名称不能为空");
+        } else if (existingOrgNames != null && !existingOrgNames.contains(orgName)) {
+            validationMsg.append("系统中不存在这机构名称 ").append(orgName);
+        }
+
+        // 校验部门名称
+        if (StringUtils.isBlank(deptName)) {
+            validationMsg.append("部门名称不能为空");
+        } else if (existingDeptNames != null && !existingDeptNames.contains(deptName)) {
+            validationMsg.append("系统中不存在这部门名称 ").append(deptName);
         }
 
         // 校验角色名称
@@ -200,7 +223,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             resultVO.setMsg(validationMsg.toString());
             resultVO.setUsername(userName);
             resultVO.setRoleNames(roleNames);
-            resultVO.setDeptName(deptCode); // 注意这里我们使用deptCode变量存储部门编码
+            resultVO.setOrgName(orgName);
+            resultVO.setDeptName(deptName);
             resultVO.setMobile(userImportVO.getMobile());
             resultVO.setEmail(userImportVO.getEmail());
             userFailVOList.add(resultVO);
@@ -218,13 +242,60 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         user.setRealName(userImportVO.getRealName());
         user.setMobile(userImportVO.getMobile());
         user.setEmail(userImportVO.getEmail());
-        Long deptId = deptCodeIdMap.get(userImportVO.getDeptCode());
+        
+        // 获取部门ID（通过机构名称和部门名称组合匹配）
+        Long deptId = getDeptIdByOrgAndDeptName(userImportVO.getOrgName(), userImportVO.getDeptName());
         if (deptId != null) {
             // 这里暂时不保存，只记录映射关系，user.getUserId()是数据库自动生成，user.getUserId()现在还是null
             userIdDeptIdMap.put(user.getUserId(), deptId);
         }
         user.setStatus(StatusEnum.ENABLE.getValue());
         return user;
+    }
+    
+    /**
+     * 通过机构名称和部门名称获取部门ID
+     * @param orgName 机构名称
+     * @param deptName 部门名称
+     * @return 部门ID
+     */
+    private Long getDeptIdByOrgAndDeptName(String orgName, String deptName) {
+        // 获取机构列表
+        List<SysDept> orgList = orgNameListMap.get(orgName);
+        if (orgList == null || orgList.isEmpty()) {
+            return null;
+        }
+        
+        // 获取部门列表
+        List<SysDept> deptList = deptNameListMap.get(deptName);
+        if (deptList == null || deptList.isEmpty()) {
+            return null;
+        }
+        
+        // 查找属于指定机构的部门
+        for (SysDept dept : deptList) {
+            // 获取部门的父级路径
+            String treePath = dept.getTreePath();
+            if (StringUtils.isNotBlank(treePath)) {
+                // 检查父级路径中是否包含机构ID
+                String[] parentIds = treePath.split(",");
+                for (String parentIdStr : parentIds) {
+                    try {
+                        Long parentId = Long.parseLong(parentIdStr);
+                        // 检查这个父级ID是否对应于指定的机构
+                        for (SysDept org : orgList) {
+                            if (org.getId().equals(parentId)) {
+                                return dept.getId();
+                            }
+                        }
+                    } catch (NumberFormatException e) {
+                        // 忽略无效的ID
+                    }
+                }
+            }
+        }
+        
+        return null;
     }
 
 
@@ -329,9 +400,10 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             List<SysUserDept> userDeptList = new ArrayList<>();
            for (UserImportVO userImportVO : importVOList) {
                String userName = userImportVO.getUsername();
-               String deptCode = userImportVO.getDeptCode();
-
-               Long deptId = deptCodeIdMap.get(deptCode);
+               
+               // 获取部门ID（通过机构名称和部门名称组合匹配）
+               Long deptId = getDeptIdByOrgAndDeptName(userImportVO.getOrgName(), userImportVO.getDeptName());
+               
                Long userId = usernameToUserIdMap.get(userName);
 
                if (deptId != null && userId != null) {

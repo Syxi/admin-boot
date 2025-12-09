@@ -39,7 +39,11 @@ public class UserImportVO {
     @ColumnWidth(20)
     private String roleNames;
 
-    @ExcelProperty(value = "部门编码")
+    @ExcelProperty(value = "机构名称")
     @ColumnWidth(20)
-    private String deptCode;
+    private String orgName;
+
+    @ExcelProperty(value = "部门名称")
+    @ColumnWidth(20)
+    private String deptName;
 }
