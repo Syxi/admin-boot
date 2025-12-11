@@ -3,7 +3,6 @@ package com.admin.module.system.service;
 import com.admin.common.excel.export.UserExportVO;
 import com.admin.common.result.ResultVO;
 import com.admin.module.system.dto.PasswordUpdateDTO;
-import com.admin.module.system.dto.UserAuthInfo;
 import com.admin.module.system.dto.UserInfoUpdateDTO;
 import com.admin.module.system.entity.SysUser;
 import com.admin.module.system.form.UserForm;
@@ -15,6 +14,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
+
+// UserAuthInfo需要单独导入
+import com.admin.module.system.dto.UserAuthInfo;
 
 public interface SysUserService extends IService<SysUser> {
 
@@ -90,7 +92,6 @@ public interface SysUserService extends IService<SysUser> {
     /**
      * 导出用户列表
      * @param
-     * @return
      */
     List<UserExportVO> exportUsers(List<Long> userIds);
 

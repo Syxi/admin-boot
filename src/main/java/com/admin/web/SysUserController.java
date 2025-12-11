@@ -59,14 +59,14 @@ public class SysUserController {
     private final SysUserService sysUserService;
 
     /**
-     * 获取用户分页列表
-     * 
-     * @param userQuery 查询条件
-     * @return 用户分页数据
+     * 用户分页列表
+     *
+     * @param userQuery 查询参数
+     * @return 用户分页列表
      */
     @Operation(summary = "用户分页列表")
     @GetMapping("/page")
-    public PageResult<UserVO> selectUserPage(@Valid UserQuery userQuery) {
+    public PageResult<UserVO> selectUserPage(UserQuery userQuery) {
         IPage<UserVO> userVOList = sysUserService.selectUserPage(userQuery);
         return PageResult.success(userVOList);
     }

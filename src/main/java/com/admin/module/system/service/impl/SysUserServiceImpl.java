@@ -1,5 +1,6 @@
 package com.admin.module.system.service.impl;
 
+import com.admin.common.annotation.DataPermission;
 import com.admin.common.constant.SystemConstants;
 import com.admin.common.enums.*;
 import com.admin.common.excel.export.UserExportVO;
@@ -62,11 +63,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
 
+
     /**
      * 获取用户分页列表（优化版：按需查询，避免全表加载）
      * @param userQuery
      * @return
      */
+    @DataPermission()
     @Override
     public IPage<UserVO> selectUserPage(UserQuery userQuery) {
         // 1. 先构建查询条件，查询用户主表
@@ -80,10 +83,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             queryWrapper.like(SysUser::getUsername, userQuery.getKeywords())
                     .or().like(SysUser::getRealName, userQuery.getKeywords());
         }
-        //
-//        if (StringUtils.isNotEmpty(userQuery.getRealName())) {
-//            queryWrapper.like(SysUser::getRealName, userQuery.getRealName());
-//        }
         
         // 2. 如果按部门筛选，只查询该部门下的用户ID（按需查询）
         if (userQuery.getDeptId() != null) {
@@ -662,8 +661,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
 
-
-
     /**
      * User 转 UserAuthInfo
      * @param user
@@ -828,6 +825,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userExportVo.setCreateTime(user.getCreateTime());
         return userExportVo;
     }
+
 
 
 

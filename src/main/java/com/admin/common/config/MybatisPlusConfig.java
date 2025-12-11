@@ -2,7 +2,6 @@ package com.admin.common.config;
 
 import com.admin.common.handler.MyDataPermissionHandler;
 import com.admin.common.handler.MyMetaObjectHandler;
-import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
@@ -33,7 +32,7 @@ public class MybatisPlusConfig {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
         // 1. 分页插件，指定数据库类型为MySQL
-        PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor(DbType.MYSQL);
+        PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor();
         paginationInterceptor.setOverflow(false); // 合理化分页参数
         paginationInterceptor.setMaxLimit(1000L); // 单页最大数量限制
         interceptor.addInnerInterceptor(paginationInterceptor);

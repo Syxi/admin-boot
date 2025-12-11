@@ -17,9 +17,9 @@
     <properties>
         <java.version>17</java.version>
         <!--  mybatisPlus      -->
-        <mybatis-plus.version>3.5.6</mybatis-plus.version>
+        <mybatis-plus.version>3.5.15</mybatis-plus.version>
         <!-- 自动代码生成 -->
-        <mybatis-plus-generator.version>3.5.6</mybatis-plus-generator.version>
+        <mybatis-plus-generator.version>3.5.15</mybatis-plus-generator.version>
         <velocity.version>2.3</velocity.version>
         <!--   mysql     -->
         <mysql.version>8.0.20</mysql.version>
@@ -126,6 +126,13 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
             <version>${mybatis-plus.version}</version>
         </dependency>
+        <!--MyBatis-Plus 的分页插件 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-generator</artifactId>

@@ -3,18 +3,11 @@ package com.admin.common.annotation;
 import java.lang.annotation.*;
 
 /**
- * 角色权限注解
+ * 数据权限控制注解
+ * 标记在 Service 方法上，表示该方法需要进行数据权限过滤
  */
-@Documented
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Documented
 public @interface DataPermission {
-
-    String orgAlias() default "";
-
-    String orgIdColumnName() default "id";
-
-    String userAlias() default "";
-
-    String userIdColumnName() default "created_by";
 }
