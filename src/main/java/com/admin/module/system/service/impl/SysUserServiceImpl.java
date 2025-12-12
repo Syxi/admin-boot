@@ -5,6 +5,7 @@ import com.admin.common.constant.SystemConstants;
 import com.admin.common.enums.*;
 import com.admin.common.excel.export.UserExportVO;
 import com.admin.common.exception.CustomException;
+import com.admin.common.handler.DataPermissionHelper;
 import com.admin.common.result.ResultVO;
 import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.dto.PasswordUpdateDTO;
@@ -94,6 +95,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             queryWrapper.between(SysUser::getCreateTime, userQuery.getStartTime(), userQuery.getEndTime());
         }
         queryWrapper.orderByDesc(SysUser::getCreateTime);
+
+        // 数据权限控制
+        DataPermissionHelper.applyPermissions(queryWrapper, SysUser::getDeptId, SysUser::getUserId, userQuery.getDeptId());
         
         // 3. 分页查询用户主表
         IPage<SysUser> page = new Page<>(userQuery.getPage(), userQuery.getLimit());

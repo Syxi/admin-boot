@@ -467,10 +467,38 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept>
     }
 
 
-
-
+    /**
+     * 获取组织以及所有子部门ID
+     *
+     * @param deptId
+     * @return
+     */
+    @Override
+    public List<Long> getAllSubDeptIds(Long deptId) {
+        if (deptId == null) {
+            return Collections.emptyList();
+        }
+        
+        // 查询指定部门
+        SysDept dept = this.getById(deptId);
+        if (dept == null) {
+            return Collections.emptyList();
+        }
+        
+        // 构造查询条件：查找所有treePath包含当前部门ID的部门
+        // 或者parentId等于当前部门ID的部门（直接子部门）
+        LambdaQueryWrapper<SysDept> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(wrapper -> wrapper
+                .eq(SysDept::getId, deptId) // 包含自己
+                .or()
+                .apply("CONCAT(',', tree_path, ',') LIKE CONCAT('%,',{0},',%')", deptId) // treePath包含当前部门ID
+                .or()
+                .eq(SysDept::getParentId, deptId) // 直接子部门
+        );
+        
+        List<SysDept> depts = this.list(queryWrapper);
+        return depts.stream()
+                .map(SysDept::getId)
+                .collect(Collectors.toList());
+    }
 }
-
-
-
-

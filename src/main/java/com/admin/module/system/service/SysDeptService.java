@@ -67,4 +67,11 @@ public interface SysDeptService extends IService<SysDept> {
     boolean deleteDept(Long id);
 
 
+    /**
+     * 获取组织以及所有子部门ID
+     *
+     * @param deptId
+     * @return
+     */
+    List<Long> getAllSubDeptIds(Long deptId);
 }

@@ -1,10 +1,8 @@
 package com.admin.common.config;
 
-import com.admin.common.handler.MyDataPermissionHandler;
 import com.admin.common.handler.MyMetaObjectHandler;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.springframework.context.annotation.Bean;
@@ -31,19 +29,17 @@ public class MybatisPlusConfig {
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
-        // 1. 分页插件，指定数据库类型为MySQL
+        // 分页插件
         PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor();
         paginationInterceptor.setOverflow(false); // 合理化分页参数
         paginationInterceptor.setMaxLimit(1000L); // 单页最大数量限制
         interceptor.addInnerInterceptor(paginationInterceptor);
 
-        // 2. 数据权限插件
-        interceptor.addInnerInterceptor(new DataPermissionInterceptor(new MyDataPermissionHandler()));
 
-        // 3. 乐观锁插件，防止并发修改数据时出现覆盖问题
+        // 乐观锁插件，防止并发修改数据时出现覆盖问题
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
 
-        // 4. 多租户插件（如需要可启用）
+        // 多租户插件（如需要可启用）
         // interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new MyTenantLineHandler()));
 
         return interceptor;

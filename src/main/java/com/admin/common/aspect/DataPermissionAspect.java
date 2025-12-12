@@ -1,13 +1,20 @@
 // com.admin.common.aspect.DataPermissionAspect.java
 package com.admin.common.aspect;
 
-import com.admin.common.annotation.DataPermission;
 import com.admin.common.context.DataPermissionContext;
+import com.admin.common.enums.DataScopeEnum;
 import com.admin.common.security.SecurityUtils;
+import com.admin.module.system.service.SysDeptService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 数据权限 AOP 切面
@@ -15,23 +22,46 @@ import org.springframework.stereotype.Component;
  */
 @Aspect
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class DataPermissionAspect {
 
-    @Around("@annotation(dataPermission)")
-    public Object around(ProceedingJoinPoint joinPoint, DataPermission dataPermission) throws Throwable {
+    private final SysDeptService deptService;
+
+    @Pointcut("@annotation(com.admin.common.annotation.DataPermission)")
+    public void dataPermissionPointcut() {}
+
+    @Around("dataPermissionPointcut()")
+    public Object doDataPermission(ProceedingJoinPoint joinPoint) throws Throwable {
         try {
-            // 从  SecurityContext 获取当前用户信息
-            Long currentUserId = SecurityUtils.getUserId();      // 当前用户 ID
-            Long currentDeptId = SecurityUtils.getDeptId();      // 所属部门 ID
-            Integer dataScope = SecurityUtils.getDataScope();           // 权限范围：2 = 本部门及子部门
+            Long userId = SecurityUtils.getUserId();
+            Long deptId = SecurityUtils.getDeptId();
+            Integer scope = SecurityUtils.getDataScope();
+            if (scope == null || SecurityUtils.isAdmin() || scope.equals(DataScopeEnum.ALL.getValue())) {
+                return joinPoint.proceed();
+            }
 
-            DataPermissionContext.setUserId(currentUserId);
-            DataPermissionContext.setDeptId(currentDeptId);
-            DataPermissionContext.setDataScope(dataScope);
+            // 根据权限类型获取部门ID列表
+            if ( scope.equals(DataScopeEnum.DEPT_AND_CHILDREN.getValue())) {
+                // 包含当前部门以及子部门数据权限
+                List<Long> deptIds = deptService.getAllSubDeptIds(deptId);
+                // 设置权限上下文
+                DataPermissionContext.setDeptIds(deptIds);
+            } else if (scope.equals(DataScopeEnum.DEPT.getValue())) {
+                // 仅当前部门数据权限
+                List<Long> deptIds = Collections.singletonList(SecurityUtils.getDeptId());
+                // 设置权限上下文
+                DataPermissionContext.setDeptIds(deptIds);
+            } else if (scope.equals(DataScopeEnum.CREATE_USER.getValue())) {
+                // 仅本人数据权限
+                DataPermissionContext.setUserId(userId);
+            }
 
+
+            // 执行业务方法
             return joinPoint.proceed();
+
         } finally {
-            // 必须清除，避免线程复用导致数据污染
             DataPermissionContext.clear();
         }
     }
