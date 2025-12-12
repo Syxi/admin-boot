@@ -36,8 +36,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     private final SysDeptService sysDeptService;
 
-    private final SysUserDeptService sysUserDeptService;
-
     private final String encodeDefaultPassword;
 
     private final Set<String> existingUsernames;
@@ -66,9 +64,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     // username和 roleNames的一对多关系
     Map<String, List<String>> usernameRoleNamesMap = new HashMap<>();
 
-    // 用户Id和部门id关系
-    private Map<Long, Long> userIdDeptIdMap = new HashMap<>();
-
     private List<UserImportVO> importVOList = new ArrayList<>();
 
     // 校验结果列表
@@ -89,7 +84,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         this.userRoleService = SpringContextUtil.getBean(SysUserRoleService.class);
         this.roleService = SpringContextUtil.getBean(SysRoleService.class);
         this.sysDeptService = SpringContextUtil.getBean(SysDeptService.class);
-        this.sysUserDeptService = SpringContextUtil.getBean(SysUserDeptService.class);
 
         this.encodeDefaultPassword = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
 
@@ -109,30 +103,30 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
                 .map(SysRole::getRoleName)
                 .collect(Collectors.toSet());
 
-        LambdaUpdateWrapper<SysDept> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(SysDept::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        List<SysDept> sysOrganizationList = sysDeptService.list(wrapper);
-
         // 加载所有机构名称
-        this.existingOrgNames = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
+        List<SysDept> orgList = sysDeptService.list(
+                new LambdaQueryWrapper<SysDept>()
+                        .eq(SysDept::getDeptType, OrganizationTypeEnum.ORGANIZATION.getValue())
+        );
+        this.existingOrgNames = orgList.stream()
                 .map(SysDept::getDeptName)
                 .collect(Collectors.toSet());
 
         // 加载所有部门名称
-        this.existingDeptNames = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
+        List<SysDept> deptList = sysDeptService.list(
+                new LambdaQueryWrapper<SysDept>()
+                        .eq(SysDept::getDeptType, OrganizationTypeEnum.DEPT.getValue())
+        );
+        this.existingDeptNames = deptList.stream()
                 .map(SysDept::getDeptName)
                 .collect(Collectors.toSet());
 
-        // 部门名称映射到部门列表（处理同名部门在不同组织的情况）
-        this.deptNameListMap = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.DEPT.getValue().equals(organ.getDeptType()))
+        // 构建部门名称到ID的映射（考虑同名部门在不同组织的情况）
+        this.deptNameListMap = deptList.stream()
                 .collect(Collectors.groupingBy(SysDept::getDeptName));
-                
-        // 机构名称映射到机构列表
-        this.orgNameListMap = sysOrganizationList.stream()
-                .filter(organ -> OrganizationTypeEnum.ORGANIZATION.getValue().equals(organ.getDeptType()))
+
+        // 构建机构名称到ID的映射
+        this.orgNameListMap = orgList.stream()
                 .collect(Collectors.groupingBy(SysDept::getDeptName));
     }
 
@@ -246,8 +240,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         // 获取部门ID（通过机构名称和部门名称组合匹配）
         Long deptId = getDeptIdByOrgAndDeptName(userImportVO.getOrgName(), userImportVO.getDeptName());
         if (deptId != null) {
-            // 这里暂时不保存，只记录映射关系，user.getUserId()是数据库自动生成，user.getUserId()现在还是null
-            userIdDeptIdMap.put(user.getUserId(), deptId);
+            user.setDeptId(deptId);
         }
         user.setStatus(StatusEnum.ENABLE.getValue());
         return user;
@@ -393,11 +386,12 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
                }
            }
 
+           // 更新用户表中的部门ID
            Map<String, Long> usernameToUserIdMap = sysUserList.stream()
                    .collect(Collectors.toMap(SysUser::getUsername, SysUser::getUserId));
 
-           // 构建userId -> deptId 映射关系
-            List<SysUserDept> userDeptList = new ArrayList<>();
+           // 构建需要更新的用户列表
+           List<SysUser> usersToUpdateDept = new ArrayList<>();
            for (UserImportVO userImportVO : importVOList) {
                String userName = userImportVO.getUsername();
                
@@ -405,16 +399,19 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
                Long deptId = getDeptIdByOrgAndDeptName(userImportVO.getOrgName(), userImportVO.getDeptName());
                
                Long userId = usernameToUserIdMap.get(userName);
-
                if (deptId != null && userId != null) {
-                   userDeptList.add(new SysUserDept(userId, deptId));
+                   SysUser user = new SysUser();
+                   user.setUserId(userId);
+                   user.setDeptId(deptId);
+                   usersToUpdateDept.add(user);
                }
            }
 
-           if (CollectionUtils.isNotEmpty(userDeptList)) {
-               boolean deptResult = sysUserDeptService.saveBatch(userDeptList);
+           // 批量更新用户部门ID
+           if (CollectionUtils.isNotEmpty(usersToUpdateDept)) {
+               boolean deptResult = sysUserService.updateBatchById(usersToUpdateDept);
                if (!deptResult) {
-                   log.error("批量保存用户部门关联失败");
+                   log.error("批量更新用户部门关联失败");
                }
            }
         } catch (Exception e) {

@@ -24,6 +24,11 @@ public class SysUser {
     private Long userId;
 
     /**
+     * 部门ID
+     */
+    private Long deptId;
+
+    /**
      * 租户ID
      */
     private Long tenantId;

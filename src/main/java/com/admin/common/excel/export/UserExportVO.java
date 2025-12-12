@@ -56,4 +56,15 @@ public class UserExportVO {
     @DateTimeFormat("yyyy-MM-dd")
     @ColumnWidth(20)
     private LocalDateTime createTime;
+    
+    @ExcelIgnore
+    private Long deptId;
+
+    public Long getDeptId() {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
+    }
 }
