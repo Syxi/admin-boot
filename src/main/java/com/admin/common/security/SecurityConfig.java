@@ -6,6 +6,7 @@ import com.admin.common.security.exception.MyAccessDeniedHandler;
 import com.admin.common.security.exception.MyAuthenticationEntryPoint;
 import com.admin.common.security.filter.CaptchaValidationFilter;
 import com.admin.common.security.filter.JwtValidationFilter;
+import com.admin.common.security.filter.RedisTokenValidationFilter;
 import com.admin.common.security.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
@@ -77,11 +78,21 @@ public class SecurityConfig {
                 UsernamePasswordAuthenticationFilter.class
         );
 
-        // 添加JWT校验过滤器
-        httpSecurity.addFilterBefore(
+        // 根据配置添加相应的Token校验过滤器
+        String sessionType = securityProperties.getSession().getType();
+        if ("jwt".equals(sessionType)) {
+            // 添加JWT校验过滤器
+            httpSecurity.addFilterBefore(
                 new JwtValidationFilter(tokenService),
                 UsernamePasswordAuthenticationFilter.class
-        );
+            );
+        } else if ("redis-token".equals(sessionType)) {
+            // 添加Redis Token校验过滤器
+            httpSecurity.addFilterBefore(
+                new RedisTokenValidationFilter(tokenService),
+                UsernamePasswordAuthenticationFilter.class
+            );
+        }
 
         return httpSecurity.build();
     }
