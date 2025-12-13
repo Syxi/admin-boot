@@ -1,8 +1,10 @@
 // com.admin.common.aspect.DataPermissionAspect.java
 package com.admin.common.aspect;
 
+import com.admin.common.annotation.DataPermission;
 import com.admin.common.context.DataPermissionContext;
 import com.admin.common.enums.DataScopeEnum;
+import com.admin.common.interceptor.DataPermissionInterceptor;
 import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -18,7 +21,7 @@ import java.util.List;
 
 /**
  * 数据权限 AOP 切面
- * 在标记了 @DataPermission 的方法执行前，设置用户上下文
+ * 在标记了 @DataPermission 的方法执行前，切面负责在方法执行前准备权限上下文
  */
 @Aspect
 @Component
@@ -34,6 +37,13 @@ public class DataPermissionAspect {
     @Around("dataPermissionPointcut()")
     public Object doDataPermission(ProceedingJoinPoint joinPoint) throws Throwable {
         try {
+            // 获取方法上的注解
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            DataPermission dataPermission = signature.getMethod().getAnnotation(DataPermission.class);
+            
+            // 设置注解信息到拦截器
+            DataPermissionInterceptor.setCurrentAnnotation(dataPermission);
+            
             Long userId = SecurityUtils.getUserId();
             Long deptId = SecurityUtils.getDeptId();
             Integer scope = SecurityUtils.getDataScope();
@@ -42,7 +52,7 @@ public class DataPermissionAspect {
             }
 
             // 根据权限类型获取部门ID列表
-            if ( scope.equals(DataScopeEnum.DEPT_AND_CHILDREN.getValue())) {
+            if (scope.equals(DataScopeEnum.DEPT_AND_CHILDREN.getValue())) {
                 // 包含当前部门以及子部门数据权限
                 List<Long> deptIds = deptService.getAllSubDeptIds(deptId);
                 // 设置权限上下文
@@ -57,12 +67,12 @@ public class DataPermissionAspect {
                 DataPermissionContext.setUserId(userId);
             }
 
-
             // 执行业务方法
             return joinPoint.proceed();
 
         } finally {
             DataPermissionContext.clear();
+            DataPermissionInterceptor.clearCurrentAnnotation();
         }
     }
 }

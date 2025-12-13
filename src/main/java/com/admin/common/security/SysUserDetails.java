@@ -50,7 +50,6 @@ public class SysUserDetails implements UserDetails {
 
 
 
-
     /**
      * 接收从 UserDetailsServiceImpl中的用户信息 MyUserDetails
      * @param userAuthInfo

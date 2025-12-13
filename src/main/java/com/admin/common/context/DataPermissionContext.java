@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 数据权限上下文，用于在线程内传递 @DataPermission 注解信息
- * 配合 AOP 切面使用，在进入 Service 方法时存入，MyBatis 拦截器读取
+ *
  */
 @Component
 public class DataPermissionContext {

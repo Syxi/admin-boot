@@ -1,6 +1,7 @@
 package com.admin.common.config;
 
 import com.admin.common.handler.MyMetaObjectHandler;
+import com.admin.common.interceptor.DataPermissionInterceptor;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
@@ -35,7 +36,9 @@ public class MybatisPlusConfig {
         paginationInterceptor.setMaxLimit(1000L); // 单页最大数量限制
         interceptor.addInnerInterceptor(paginationInterceptor);
 
-
+        // 使用自定义的数据权限拦截器
+        interceptor.addInnerInterceptor(new DataPermissionInterceptor());
+        
         // 乐观锁插件，防止并发修改数据时出现覆盖问题
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
 
