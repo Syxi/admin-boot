@@ -115,4 +115,10 @@ public interface SysRoleService extends IService<SysRole> {
     Set<Long> selectRoleIds(Set<String> roleCodes);
 
 
+    /**
+     * 更新数据权限范围
+     * @param dataScope 数据权限范围
+     * @return
+     */
+    boolean updateRoleDataPermission(Long roleId, Integer dataScope);
 }

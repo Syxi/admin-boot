@@ -93,16 +93,6 @@ public class SysRoleController {
         return ResultVO.judge(result);
     }
 
-
-
-    @Operation(summary = "角色分配菜单，角色已分配的菜单id集合")
-    @GetMapping("/{roleId}/menuIds")
-    public ResultVO<List<Long>> selectMenuIds(@PathVariable("roleId") Long roleId) {
-        List<Long> menuIds = roleService.selectMenuIds(roleId);
-        return ResultVO.success(menuIds);
-    }
-
-
     @Operation(summary = "角色下拉选项列表")
     @GetMapping("/option")
     public ResultVO<List<OptionVO>> roleTreeOption() {
@@ -110,12 +100,28 @@ public class SysRoleController {
         return ResultVO.success(optionVOS);
     }
 
+    @Operation(summary = "角色菜单授权")
+    @GetMapping("/{roleId}/menuIds")
+    public ResultVO<List<Long>> selectMenuIds(@PathVariable("roleId") Long roleId) {
+        List<Long> menuIds = roleService.selectMenuIds(roleId);
+        return ResultVO.success(menuIds);
+    }
 
-    @Operation(summary = "更新新角色用户关系")
+
+    @Operation(summary = "角色分配用户")
     @PreAuthorize("@pms.hasPerm('sys:role:user')")
     @PutMapping("/updateRoleUser/{roleId}")
     public ResultVO<Boolean> updateRoleUserList(@PathVariable("roleId") Long roleId, @RequestBody List<Long> userIds) {
         boolean result = roleService.updateRoleUsers(roleId, userIds);
+        return ResultVO.judge(result);
+    }
+
+
+    @Operation(summary = "角色数据权限授权")
+    @NoRepeatSubmit
+    @PutMapping("/updateDataScope/{roleId}")
+    public ResultVO<Boolean> updateRoleDataPermission(@PathVariable("roleId") Long roleId, @RequestBody Integer dataScope) {
+        boolean result = roleService.updateRoleDataPermission(roleId, dataScope);
         return ResultVO.judge(result);
     }
 

@@ -489,4 +489,19 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
 
 
+    /**
+     * 更新数据权限范围
+     *
+     * @param dataScope 数据权限范围
+     * @return
+     */
+    @Override
+    public boolean updateRoleDataPermission(Long roleId, Integer dataScope) {
+        LambdaUpdateWrapper<SysRole> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.set(SysRole::getDataScope, dataScope);
+        updateWrapper.eq(SysRole::getRoleId, roleId);
+        return this.update(updateWrapper);
+    }
+
+
 }
