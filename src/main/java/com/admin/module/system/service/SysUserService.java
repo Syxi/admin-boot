@@ -22,6 +22,15 @@ public interface SysUserService extends IService<SysUser> {
 
 
     /**
+     * 根据用户ID列表获取用户名
+     *
+     * @param userIds 用户ID列表
+     * @return 用户名列表
+     */
+    List<String> getUsernamesByIds(List<Long> userIds);
+
+
+    /**
      * 获取用户分页列表
      * @param userQuery
      * @return

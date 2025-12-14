@@ -11,6 +11,7 @@ import com.admin.module.system.event.RolePermissionChangedEvent;
 import com.admin.module.system.form.MenuForm;
 import com.admin.module.system.mapper.SysMenuMapper;
 import com.admin.module.system.query.MenuQuery;
+import com.admin.module.system.service.MenuDataService;
 import com.admin.module.system.service.SysMenuService;
 import com.admin.module.system.service.SysRoleMenuService;
 import com.admin.module.system.service.SysRoleService;
@@ -52,7 +53,7 @@ import static java.util.stream.Collectors.toSet;
 public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
 
     private final SysRoleMenuService roleMenuService;
-    private final SysRoleService roleService;
+    private final MenuDataService menuDataService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -213,7 +214,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         }
 
         // 根据角色，找出角色分配的菜单
-        Set<Long> roleIds = roleService.selectRoleIds(roleCodes);
+        Set<Long> roleIds = menuDataService.getRoleIdsByRoleCodes(roleCodes);
         List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
 
         // 菜单列表
@@ -693,7 +694,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         }
 
         // 获取角色信息并发布角色菜单更新事件
-        SysRole role = roleService.getById(roleId);
+        SysRole role = menuDataService.getRoleById(roleId);
         if (role != null) {
             eventPublisher.publishEvent(new RolePermissionChangedEvent(
                     this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED, 
@@ -736,7 +737,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Deprecated
     @Override
     public void refreshRolePermsCache(Long roleId) {
-        SysRole role = roleService.getById(roleId);
+        SysRole role = menuDataService.getRoleById(roleId);
         if (role != null) {
             eventPublisher.publishEvent(new RolePermissionChangedEvent(
                     this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED,

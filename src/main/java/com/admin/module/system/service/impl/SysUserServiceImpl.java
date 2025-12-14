@@ -49,7 +49,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     private final SysMenuService menuService;
 
-    private final SysRoleService roleService;
+    private final UserDataService userDataService;
 
     private final SysRoleMenuService roleMenuService;
 
@@ -58,6 +58,29 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final PasswordEncoder passwordEncoder;
 
     private final UserLoginLogService  userLoginLogService;
+
+
+    /**
+     * 根据用户ID列表获取用户名
+     *
+     * @param userIds 用户ID列表
+     * @return 用户名列表
+     */
+    @Override
+    public List<String> getUsernamesByIds(List<Long> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return Collections.emptyList();
+        }
+
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(SysUser::getUserId, userIds);
+        queryWrapper.select(SysUser::getUsername); // 只查询username字段
+
+        List<SysUser> userList = this.list(queryWrapper);
+        return userList.stream()
+                .map(SysUser::getUsername)
+                .collect(Collectors.toList());
+    }
 
 
     /**
@@ -183,7 +206,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             .collect(toList());
         
         // 只查询涉及的角色
-        List<SysRole> roleList = roleService.selectRoleList(roleIds);
+        List<SysRole> roleList = userDataService.selectRoleList(roleIds);
         Map<Long, String> roleIdRoleNameMap = roleList.stream()
             .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName, (v1, v2) -> v1));
         
@@ -214,7 +237,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         List<Long> roleIds = userRoleList.stream().map(SysUserRole::getRoleId).collect(toList());
 
         // roleId roleName映射
-        List<SysRole> roleList = roleService.selectRoleList(roleIds);
+        List<SysRole> roleList = userDataService.selectRoleList(roleIds);
         Map<Long, String> roleIdRoleNameMap = roleList.stream()
                 .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName));
 
@@ -492,7 +515,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (CollectionUtils.isNotEmpty(userRoleList)) {
             Set<Long> roleIds = userRoleList.stream().map(SysUserRole::getRoleId).collect(Collectors.toSet());
             // 角色列表
-            List<SysRole> roleList = roleService.listByIds(roleIds);
+            List<SysRole> roleList = userDataService.getRolesByIds(new ArrayList<>(roleIds));
 
             // 角色编码
             Set<String> roleCodes = roleList.stream()
@@ -548,7 +571,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 用户角色编码
         List<Long> roleIds = userRoleService.selectRoleIds(user.getUserId());
-        List<SysRole> roleList = roleService.selectRoleList(roleIds);
+        List<SysRole> roleList = userDataService.selectRoleList(roleIds);
         Set<String> roleCodes = roleList.stream()
                 .map(SysRole::getRoleCode)
                 .collect(Collectors.toSet());
@@ -712,7 +735,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         List<SysUserRole> userRoleList = userRoleService.list();
         List<Long> roleIds = userRoleList.stream().map(SysUserRole::getRoleId).collect(toList());
 
-        List<SysRole> roleList = roleService.selectRoleList(roleIds);
+        List<SysRole> roleList = userDataService.selectRoleList(roleIds);
         // roleId 和 roleName映射
         Map<Long, String> roleIdRoleNameMap = roleList.stream()
                 .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName));

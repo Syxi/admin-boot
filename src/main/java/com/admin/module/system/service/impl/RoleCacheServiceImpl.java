@@ -34,10 +34,8 @@ import java.util.stream.Collectors;
 public class RoleCacheServiceImpl implements RoleCacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
-    private final SysRoleService roleService;
+    private final RoleCacheDataService roleCacheDataService;
     private final SysRoleMenuService roleMenuService;
-    private final SysMenuService menuService;
-    private final SysUserRoleService userRoleService;
     private final TokenService tokenService;
 
     /**
@@ -64,8 +62,7 @@ public class RoleCacheServiceImpl implements RoleCacheService {
             }
 
             // 获取所有角色
-            List<SysRole> roleList = roleService.list(new LambdaQueryWrapper<SysRole>()
-                    .eq(SysRole::getDeleted, DeletedEnum.NO_DELETE.getValue()));
+            List<SysRole> roleList = roleCacheDataService.getAllActiveRoles();
 
             if (CollectionUtils.isEmpty(roleList)) {
                 log.warn("系统中没有角色数据");
@@ -120,7 +117,7 @@ public class RoleCacheServiceImpl implements RoleCacheService {
     @Override
     public void refreshRolePermsCache(Long roleId) {
         try {
-            SysRole role = roleService.getById(roleId);
+            SysRole role = roleCacheDataService.getRoleById(roleId);
             if (role == null) {
                 log.warn("角色不存在: roleId={}", roleId);
                 return;
@@ -143,10 +140,7 @@ public class RoleCacheServiceImpl implements RoleCacheService {
             redisTemplate.opsForHash().delete(CacheConstants.ROLE_PERMS_PREFIX, roleCode);
 
             // 获取角色
-            SysRole role = roleService.getOne(new LambdaQueryWrapper<SysRole>()
-                    .eq(SysRole::getRoleCode, roleCode)
-                    .eq(SysRole::getDeleted, DeletedEnum.NO_DELETE.getValue())
-                    .last("LIMIT 1"));
+            SysRole role = roleCacheDataService.getRoleByCode(roleCode);
 
             if (role == null) {
                 log.warn("角色不存在: roleCode={}", roleCode);
@@ -164,11 +158,10 @@ public class RoleCacheServiceImpl implements RoleCacheService {
             }
 
             // 查询菜单权限
-            List<SysMenu> menuList = menuService.list(new LambdaQueryWrapper<SysMenu>()
-                    .in(SysMenu::getMenuId, menuIds)
-                    .eq(SysMenu::getStatus, StatusEnum.ENABLE.getValue())
-                    .eq(SysMenu::getDeleted, DeletedEnum.NO_DELETE.getValue())
-                    .isNotNull(SysMenu::getPerm));
+            List<SysMenu> menuList = roleCacheDataService.getMenusByIds(menuIds);
+            menuList = menuList.stream()
+                    .filter(menu -> StringUtils.isNotBlank(menu.getPerm()))
+                    .collect(Collectors.toList());
 
             Set<String> perms = menuList.stream()
                     .map(SysMenu::getPerm)
@@ -233,9 +226,7 @@ public class RoleCacheServiceImpl implements RoleCacheService {
     public void invalidateOnlineUsersByRole(String roleCode) {
         try {
             // 查找拥有该角色的所有用户
-            SysRole role = roleService.getOne(new LambdaQueryWrapper<SysRole>()
-                    .eq(SysRole::getRoleCode, roleCode)
-                    .last("LIMIT 1"));
+            SysRole role = roleCacheDataService.getRoleByCode(roleCode);
 
             if (role == null) {
                 log.warn("角色不存在: roleCode={}", roleCode);
@@ -243,8 +234,7 @@ public class RoleCacheServiceImpl implements RoleCacheService {
             }
 
             // 查询拥有该角色的用户ID列表
-            List<SysUserRole> userRoles = userRoleService.list(new LambdaQueryWrapper<SysUserRole>()
-                    .eq(SysUserRole::getRoleId, role.getRoleId()));
+            List<SysUserRole> userRoles = roleCacheDataService.getUserRolesByRoleId(role.getRoleId());
 
             if (CollectionUtils.isEmpty(userRoles)) {
                 log.debug("没有用户拥有角色: roleCode={}", roleCode);
@@ -325,10 +315,7 @@ public class RoleCacheServiceImpl implements RoleCacheService {
             return Collections.emptyMap();
         }
 
-        List<SysMenu> menuList = menuService.list(new LambdaQueryWrapper<SysMenu>()
-                .in(SysMenu::getMenuId, menuIds)
-                .eq(SysMenu::getStatus, StatusEnum.ENABLE.getValue())
-                .eq(SysMenu::getDeleted, DeletedEnum.NO_DELETE.getValue()));
+        List<SysMenu> menuList = roleCacheDataService.getMenusByIds(menuIds);
 
         return menuList.stream()
                 .filter(menu -> StringUtils.isNotBlank(menu.getPerm()))

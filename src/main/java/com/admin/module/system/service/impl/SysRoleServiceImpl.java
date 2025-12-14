@@ -12,9 +12,7 @@ import com.admin.module.system.event.RolePermissionChangedEvent;
 import com.admin.module.system.form.RoleForm;
 import com.admin.module.system.mapper.SysRoleMapper;
 import com.admin.module.system.query.RoleQuery;
-import com.admin.module.system.service.SysRoleMenuService;
-import com.admin.module.system.service.SysRoleService;
-import com.admin.module.system.service.SysUserRoleService;
+import com.admin.module.system.service.*;
 import com.admin.module.system.vo.OptionVO;
 import com.admin.module.system.vo.RoleVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -33,10 +31,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -44,12 +40,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@Lazy
 @RequiredArgsConstructor
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> implements SysRoleService {
 
     private final SysUserRoleService userRoleService;
     private final SysRoleMenuService roleMenuService;
+    private final UserTokenRefreshService userTokenRefreshService; // 注入UserTokenRefreshService
+    private final RoleCacheService roleCacheService; // 注入RoleCacheService
     private final RedisTemplate<String, Object> redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -323,8 +320,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
 
     /**
-     * 获取角色的菜单id
      *
+     * 获取角色的菜单id
      * @param roleId
      * @return
      */
@@ -463,8 +460,18 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         affectedUserIds.addAll(addedUserIds);
 
         if (CollectionUtils.isNotEmpty(affectedUserIds)) {
-            // TODO: 需要从用户表查询username，然后使Token失效
-            // 这里简化处理，只记录日志
+            // 查询受影响用户的用户名
+            List<String> affectedUsernames = userTokenRefreshService.getUsernamesByIds(new ArrayList<>(affectedUserIds));
+            
+            // 使受影响用户的Token失效
+            for (String username : affectedUsernames) {
+                try {
+                    roleCacheService.invalidateUserCache(username);
+                } catch (Exception e) {
+                    log.error("使用户Token失效失败: username={}", username, e);
+                }
+            }
+            
             log.info("角色用户关系更新，影响 {} 个用户: roleId={}, roleCode={}", 
                     affectedUserIds.size(), roleId, role.getRoleCode());
         }
@@ -488,7 +495,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         return roleIds;
     }
 
-
     /**
      * 更新数据权限范围
      *
@@ -497,10 +503,26 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public boolean updateRoleDataPermission(Long roleId, Integer dataScope) {
+        // 获取角色信息
+        SysRole role = this.getById(roleId);
+        if (role == null) {
+            throw new CustomException("角色不存在");
+        }
+        
         LambdaUpdateWrapper<SysRole> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.set(SysRole::getDataScope, dataScope);
         updateWrapper.eq(SysRole::getRoleId, roleId);
-        return this.update(updateWrapper);
+        boolean result = this.update(updateWrapper);
+        
+        // 数据权限更新成功后，发布角色权限变更事件
+        if (result) {
+            eventPublisher.publishEvent(new RolePermissionChangedEvent(
+                    this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED, 
+                    roleId, role.getRoleCode()));
+            log.info("角色数据权限更新，已发布权限变更事件: roleId={}, roleCode={}", roleId, role.getRoleCode());
+        }
+        
+        return result;
     }
 
 

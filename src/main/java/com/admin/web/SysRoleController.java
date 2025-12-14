@@ -100,7 +100,7 @@ public class SysRoleController {
         return ResultVO.success(optionVOS);
     }
 
-    @Operation(summary = "角色菜单授权")
+    @Operation(summary = "获取角色的菜单id")
     @GetMapping("/{roleId}/menuIds")
     public ResultVO<List<Long>> selectMenuIds(@PathVariable("roleId") Long roleId) {
         List<Long> menuIds = roleService.selectMenuIds(roleId);
