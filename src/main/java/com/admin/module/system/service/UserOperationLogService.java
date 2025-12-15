@@ -20,9 +20,12 @@ public interface UserOperationLogService extends IService<UserOperationLog> {
     IPage<UserOperationLog> selectUserOperationLogPage(UserOperationLogQuery query);
 
 
+    
     /**
-     * 保存日志信息
+     * 保存日志信息（带用户信息）
      * @param joinPoint
+     * @param userId 用户ID
+     * @param username 用户名
      */
-    void saveUserOperationLog(JoinPoint joinPoint);
+    void saveUserOperationLog(JoinPoint joinPoint, Long userId, String username);
 }

@@ -118,8 +118,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         queryWrapper.orderByDesc(SysUser::getCreateTime);
 
-        // 数据权限控制
-//        DataPermissionHelper.applyPermissions(queryWrapper, SysUser::getDeptId, SysUser::getUserId, userQuery.getDeptId());
         
         // 3. 分页查询用户主表
         IPage<SysUser> page = new Page<>(userQuery.getPage(), userQuery.getLimit());
@@ -222,55 +220,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
 
-    /**
-     * userId、roleNames存储在map中，key是userId, value是roleNames
-     * @deprecated 已优化为 buildUserIdRoleNamesMapByUserIds，此方法仅作为备用
-     * @return
-     */
-    @Deprecated
-    private Map<Long, List<String>> buildUserIdRoleNamesMap() {
-        // 用户角色关联表
-        List<SysUserRole> userRoleList = userRoleService.list();
-        if (CollectionUtils.isEmpty(userRoleList)) {
-            return Collections.emptyMap();
-        }
-        List<Long> roleIds = userRoleList.stream().map(SysUserRole::getRoleId).collect(toList());
-
-        // roleId roleName映射
-        List<SysRole> roleList = userDataService.selectRoleList(roleIds);
-        Map<Long, String> roleIdRoleNameMap = roleList.stream()
-                .collect(Collectors.toMap(SysRole::getRoleId, SysRole::getRoleName));
-
-        // userId 和 roleNames映射
-        Map<Long, List<String>> userIdRoleNamesMap = userRoleList.stream()
-                .collect(Collectors.groupingBy(
-                        SysUserRole::getUserId,
-                        Collectors.mapping(
-                                userRole -> {
-                                    return Optional.ofNullable(roleIdRoleNameMap.get(userRole.getRoleId()))
-                                            .orElse("用户还没有分配角色");
-                                },
-                                Collectors.toList()
-                        )
-                ));
-
-        return userIdRoleNamesMap;
-    }
-
-
-    /**
-     * dept 的id、name的关系存储在map中，key是id, value是name
-     * @return
-     */
-    private Map<Long, String> buildDeptIdDeptNamesMap() {
-        List<SysDept> deptList = sysDeptService.list();
-        if (CollectionUtils.isEmpty(deptList)) {
-            return Collections.emptyMap();
-        }
-        Map<Long, String> idNameMap = deptList.stream()
-                .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
-        return idNameMap;
-    }
 
 
     /**

@@ -1,16 +1,15 @@
 package com.admin.module.system.service.impl;
 
+import com.admin.common.context.BaseServiceBeanContext;
+import com.admin.common.util.IpUtil;
+import com.admin.module.system.entity.UserOperationLog;
+import com.admin.module.system.mapper.UserOperationLogMapper;
 import com.admin.module.system.query.UserOperationLogQuery;
 import com.admin.module.system.service.UserOperationLogService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.admin.common.security.SecurityConstants;
-import com.admin.common.util.IpUtil;
-import com.admin.common.security.SecurityUtils;
-import com.admin.module.system.entity.UserOperationLog;
-import com.admin.module.system.mapper.UserOperationLogMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +17,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -32,7 +34,6 @@ import java.time.LocalDateTime;
 public class UserOperationLogServiceImpl extends ServiceImpl<UserOperationLogMapper, UserOperationLog>
     implements UserOperationLogService {
 
-    private final HttpServletRequest request;
 
     /**
      * 获取用户操作日志
@@ -52,23 +53,30 @@ public class UserOperationLogServiceImpl extends ServiceImpl<UserOperationLogMap
         return userOperationLogs;
     }
 
-    /**
-     * 保存日志信息
-     *
-     * @param joinPoint
-     */
+    
     @Override
-    public void saveUserOperationLog(JoinPoint joinPoint) {
-        Long userId = null;
-        String username = null;
+    public void saveUserOperationLog(JoinPoint joinPoint, Long userId, String username) {
+        try {
+            HttpServletRequest request = getCurrentHttpRequest();
+            if (request == null) {
+                log.warn("No HTTP request found, skipping user operation log");
+                return;
+            }
 
-        // 非登录请求，即登录成功后的请求，才给 userId username 赋值
-        String requestURI = request.getRequestURI();
-        if (!SecurityConstants.LOGIN_PATH.equals(requestURI)) {
-            userId = SecurityUtils.getUserId();
-            username = SecurityUtils.getUserName();
+            saveUserOperationLogInternal(joinPoint, request, userId, username);
+        } catch (Exception e) {
+            log.error("保存操作日志异常", e);
         }
-
+    }
+    
+    /**
+     * 保存操作日志的核心实现
+     * @param joinPoint 切点
+     * @param request HTTP请求
+     * @param userId 用户ID
+     * @param username 用户名
+     */
+    private void saveUserOperationLogInternal(JoinPoint joinPoint, HttpServletRequest request, Long userId, String username) {
         String className = joinPoint.getSignature().getDeclaringTypeName();
         String methodName = joinPoint.getSignature().getName();
         String fullMethodName = className + "." + methodName + "()";
@@ -83,7 +91,6 @@ public class UserOperationLogServiceImpl extends ServiceImpl<UserOperationLogMap
             userOperationValue = "系统模块";
         }
 
-
         String ip = IpUtil.getIpAddr(request);
         String address = IpUtil.getRegion(ip);
 
@@ -96,9 +103,21 @@ public class UserOperationLogServiceImpl extends ServiceImpl<UserOperationLogMap
         userOperationLog.setMethod(fullMethodName);
         userOperationLog.setCreateTime(LocalDateTime.now());
 
-        this.save(userOperationLog);
-
+        BaseServiceBeanContext.logBatchProcessor.addOperationLog(userOperationLog);
     }
+
+    private HttpServletRequest getCurrentHttpRequest() {
+        try {
+            RequestAttributes ra = RequestContextHolder.getRequestAttributes();
+            if (ra instanceof ServletRequestAttributes) {
+                return ((ServletRequestAttributes) ra).getRequest();
+            }
+        } catch (IllegalStateException e) {
+            // No request bound to current thread
+        }
+        return null;
+    }
+
 }
 
 

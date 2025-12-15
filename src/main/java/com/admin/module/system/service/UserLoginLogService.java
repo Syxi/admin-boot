@@ -25,5 +25,5 @@ public interface UserLoginLogService extends IService<UserLoginLog> {
      * 保存登录日志
      * @param joinPoint
      */
-    void saveLoginLog(JoinPoint joinPoint);
+    void saveLoginLog(JoinPoint joinPoint, Long userId, String username);
 }
