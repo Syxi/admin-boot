@@ -10,9 +10,6 @@ import com.admin.module.system.service.OnlineUserService;
 import com.admin.module.system.vo.OnlineUserVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -24,7 +21,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 /**
 * @author sy
@@ -112,6 +108,7 @@ public class OnlineUserServiceImpl implements OnlineUserService{
                 return new Page<>();
             }
 
+            // 获取所有符合条件的数据
             List<OnlineUserVO> onlineUserVOList = new ArrayList<>();
             String usernameFilter = onlineUserQuery.getUsername();
             for (String key : keys) {
@@ -134,16 +131,21 @@ public class OnlineUserServiceImpl implements OnlineUserService{
                 onlineUserVOList.add(onlineUserVO);
             }
 
-            // 手动分页
+            // 使用 MyBatis-Plus 的分页工具进行分页
             int pageSize = onlineUserQuery.getLimit();
             int pageNum = onlineUserQuery.getPage();
             int total = onlineUserVOList.size();
 
-            int fromIndex = Math.min((pageNum-1) * pageSize, total);
+            // 分页处理
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
             int toIndex = Math.min(fromIndex + pageSize, total);
-            List<OnlineUserVO> pageList = onlineUserVOList.subList(fromIndex, toIndex);
 
-            // 创造分页对象
+            List<OnlineUserVO> pageList = new ArrayList<>();
+            if (fromIndex < toIndex) {
+                pageList = onlineUserVOList.subList(fromIndex, toIndex);
+            }
+
+            // 创建分页对象
             Page<OnlineUserVO> page = new Page<>(pageNum, pageSize);
             page.setTotal(total);
             page.setRecords(pageList);
