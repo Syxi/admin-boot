@@ -1,6 +1,7 @@
 package com.admin.module.system.event;
 
 import com.admin.module.system.service.RoleCacheService;
+import com.admin.module.system.service.TokenRefreshService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 角色权限变更事件监听器
- * 负责处理角色权限变更后的缓存刷新和Token失效
+ * 负责处理角色权限变更后的缓存刷新和Token刷新
  * 
  * @author suYan
  */
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class RolePermissionChangedEventListener {
 
     private final RoleCacheService roleCacheService;
+    private final TokenRefreshService tokenRefreshService;
 
     /**
      * 监听角色权限变更事件
@@ -74,9 +76,9 @@ public class RolePermissionChangedEventListener {
         if (event.getRoleId() != null && event.getRoleCode() != null) {
             // 刷新指定角色的权限缓存
             roleCacheService.refreshRolePermsCache(event.getRoleId());
-            // 使拥有该角色的在线用户Token失效
-            roleCacheService.invalidateOnlineUsersByRole(event.getRoleCode());
-            log.info("角色菜单更新，已刷新缓存并使Token失效: roleId={}, roleCode={}", 
+            // 为拥有该角色的在线用户刷新Token
+            tokenRefreshService.refreshOnlineUsersByRole(event.getRoleCode());
+            log.info("角色菜单更新，已刷新缓存并为在线用户刷新Token: roleId={}, roleCode={}", 
                     event.getRoleId(), event.getRoleCode());
         }
     }
@@ -93,9 +95,9 @@ public class RolePermissionChangedEventListener {
             if (event.getRoleId() != null) {
                 roleCacheService.refreshRolePermsCache(event.getRoleId());
             }
-            // 使拥有旧角色的在线用户Token失效
-            roleCacheService.invalidateOnlineUsersByRole(oldRoleCode);
-            log.info("角色编码变更，已更新缓存并使Token失效: oldRoleCode={}", oldRoleCode);
+            // 为拥有旧角色的在线用户刷新Token
+            tokenRefreshService.refreshOnlineUsersByRole(oldRoleCode);
+            log.info("角色编码变更，已更新缓存并为在线用户刷新Token: oldRoleCode={}", oldRoleCode);
         }
     }
 
@@ -106,9 +108,9 @@ public class RolePermissionChangedEventListener {
         if (event.getRoleCode() != null) {
             // 清除角色权限缓存
             roleCacheService.clearRolePermsCache(event.getRoleCode());
-            // 使拥有该角色的在线用户Token失效
-            roleCacheService.invalidateOnlineUsersByRole(event.getRoleCode());
-            log.info("角色已删除，已清除缓存并使Token失效: roleCode={}", event.getRoleCode());
+            // 为拥有该角色的在线用户刷新Token
+            tokenRefreshService.refreshOnlineUsersByRole(event.getRoleCode());
+            log.info("角色已删除，已清除缓存并为在线用户刷新Token: roleCode={}", event.getRoleCode());
         }
     }
 }

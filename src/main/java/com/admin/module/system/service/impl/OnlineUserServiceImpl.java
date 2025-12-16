@@ -7,6 +7,8 @@ import com.admin.common.security.SysUserDetails;
 import com.admin.common.security.service.TokenService;
 import com.admin.module.system.query.OnlineUserQuery;
 import com.admin.module.system.service.OnlineUserService;
+import com.admin.module.system.service.TokenRefreshService;
+import com.admin.module.system.vo.AuthTokenVO;
 import com.admin.module.system.vo.OnlineUserVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -38,12 +40,15 @@ public class OnlineUserServiceImpl implements OnlineUserService{
     private final byte[] secretKeyBytes;
 
     private final TokenService tokenService;
+    
+    private final TokenRefreshService tokenRefreshService;
 
-    public OnlineUserServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate, TokenService tokenService) {
+    public OnlineUserServiceImpl(SecurityProperties securityProperties, RedisTemplate<String, Object> redisTemplate, TokenService tokenService, TokenRefreshService tokenRefreshService) {
         this.securityProperties = securityProperties;
         this.secretKeyBytes = securityProperties.getJwt().getKey().getBytes(StandardCharsets.UTF_8);
         this.redisTemplate = redisTemplate;
         this.tokenService = tokenService;
+        this.tokenRefreshService = tokenRefreshService;
     }
 
     /**
@@ -183,6 +188,17 @@ public class OnlineUserServiceImpl implements OnlineUserService{
             throw new RuntimeException("强制用户下线失败："+ e.getMessage());
         }
 
+    }
+    
+    /**
+     * 为指定用户刷新Token
+     *
+     * @param username 用户名
+     * @return 新的认证Token信息
+     */
+    @Override
+    public AuthTokenVO refreshToken(String username) {
+        return tokenRefreshService.refreshTokenForUser(username);
     }
 
 

@@ -1,6 +1,7 @@
 package com.admin.module.system.service;
 
 import com.admin.module.system.query.OnlineUserQuery;
+import com.admin.module.system.vo.AuthTokenVO;
 import com.admin.module.system.vo.OnlineUserVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.security.core.Authentication;
@@ -32,6 +33,13 @@ public interface OnlineUserService {
      * @param username
      */
     void forceLogout(String username);
-
+    
+    /**
+     * 为指定用户刷新Token
+     *
+     * @param username 用户名
+     * @return 新的认证Token信息
+     */
+    AuthTokenVO refreshToken(String username);
 
 }
