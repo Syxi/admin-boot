@@ -15,6 +15,7 @@ import com.admin.module.system.service.MenuDataService;
 import com.admin.module.system.service.SysMenuService;
 import com.admin.module.system.service.SysRoleMenuService;
 import com.admin.module.system.service.SysRoleService;
+import com.admin.module.system.service.impl.WebSocketPermissionServiceImpl;
 import com.admin.module.system.vo.KeyValueVO;
 import com.admin.module.system.vo.MenuVO;
 import com.admin.module.system.vo.OptionVO;
@@ -56,6 +57,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     private final MenuDataService menuDataService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
+    private final WebSocketPermissionServiceImpl webSocketPermissionService;
 
 
 
@@ -700,6 +702,9 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
                     this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED, 
                     roleId, role.getRoleCode()));
             log.info("角色菜单更新，已发布权限变更事件: roleId={}, roleCode={}", roleId, role.getRoleCode());
+            
+            // 通过WebSocket向拥有该角色的所有在线用户发送权限更新通知
+            webSocketPermissionService.sendPermissionUpdateNotificationByRole(role.getRoleCode());
         }
 
         return true;
