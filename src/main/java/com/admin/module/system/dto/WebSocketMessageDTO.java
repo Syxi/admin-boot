@@ -20,6 +20,11 @@ public class WebSocketMessageDTO {
     private String type;
     
     /**
+     * 消息标题
+     */
+    private String title;
+    
+    /**
      * 消息内容
      */
     private Object payload;
@@ -34,8 +39,18 @@ public class WebSocketMessageDTO {
      */
     private Integer retryCount = 0;
     
+
+    
     public WebSocketMessageDTO() {
         this.timestamp = System.currentTimeMillis();
+    }
+    
+    public WebSocketMessageDTO(String messageId, String type, String title, Object payload) {
+        this();
+        this.messageId = messageId;
+        this.type = type;
+        this.title = title;
+        this.payload = payload;
     }
     
     public WebSocketMessageDTO(String messageId, String type, Object payload) {
@@ -44,4 +59,6 @@ public class WebSocketMessageDTO {
         this.type = type;
         this.payload = payload;
     }
+    
+
 }

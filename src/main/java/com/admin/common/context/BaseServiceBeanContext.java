@@ -1,9 +1,7 @@
 package com.admin.common.context;
 
 import com.admin.common.aspect.LogBatchProcessor;
-import com.admin.module.system.service.SysUserService;
-import com.admin.module.system.service.UserLoginLogService;
-import com.admin.module.system.service.UserOperationLogService;
+import com.admin.module.system.service.*;
 import jakarta.annotation.Resource;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -19,6 +17,10 @@ public class BaseServiceBeanContext {
     public static UserLoginLogService userLoginLogService;
 
     public static LogBatchProcessor logBatchProcessor;
+
+    public static SysMenuService sysMenuService;
+
+    public static WebSocketPermissionService webSocketPermissionService;
 
     @Resource
     public void setSysUserService(SysUserService sysUserService) {
@@ -39,5 +41,15 @@ public class BaseServiceBeanContext {
     @Resource
     public void setLogBatchProcessor(LogBatchProcessor logBatchProcessor) {
         BaseServiceBeanContext.logBatchProcessor = logBatchProcessor;
+    }
+
+    @Resource
+    public void setSysMenuService(SysMenuService sysMenuService) {
+        BaseServiceBeanContext.sysMenuService = sysMenuService;
+    }
+
+    @Resource
+    public void setWebSocketPermissionService(WebSocketPermissionService webSocketPermissionService) {
+        BaseServiceBeanContext.webSocketPermissionService = webSocketPermissionService;
     }
 }

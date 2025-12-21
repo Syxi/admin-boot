@@ -1,5 +1,6 @@
 package com.admin.common.config;
 
+import com.admin.common.interceptor.WebSocketAuthInterceptor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,12 @@ import java.util.Map;
 @Slf4j
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+
+    public WebSocketConfig(WebSocketAuthInterceptor webSocketAuthInterceptor) {
+        this.webSocketAuthInterceptor = webSocketAuthInterceptor;
+    }
+
     /**
      * 注册一个端点，客户端通过这个端点进行连接
      * @param registry
@@ -34,20 +41,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")  // 注册了一个 /ws 的端点
                 .setAllowedOriginPatterns("*")  // 允许跨域的 WebSocket 连接
+                // 添加认证拦截器
                 .withSockJS()
                 .setHeartbeatTime(10000)  // 设置心跳时间为10秒
                 .setDisconnectDelay(30000); // 设置断开连接延迟为30秒
                 
         // 注册一个备用端点，不使用SockJS
         registry.addEndpoint("/ws-alt")
-                .setAllowedOriginPatterns("*")
-                .setHandshakeHandler(new DefaultHandshakeHandler() {
-                    @Override
-                    protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler, Map<String, Object> attributes) {
-                        // 可以在这里添加用户认证逻辑
-                        return super.determineUser(request, wsHandler, attributes);
-                    }
-                });
+                .setAllowedOriginPatterns("*");
+//                .addInterceptors(webSocketAuthInterceptor) // 添加认证拦截器
+//                .setHandshakeHandler(new DefaultHandshakeHandler() {
+//                    @Override
+//                    protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler, Map<String, Object> attributes) {
+//                        // 可以在这里添加用户认证逻辑
+//                        return super.determineUser(request, wsHandler, attributes);
+//                    }
+//                });
     }
 
 
