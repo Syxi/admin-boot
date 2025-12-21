@@ -24,7 +24,7 @@
         <!--   mysql     -->
         <mysql.version>8.0.20</mysql.version>
         <!--  接口文档      -->
-        <knife4j.version>4.4.0</knife4j.version>
+        <knife4j.version>4.5.0</knife4j.version>
         <!--  配置文件加密      -->
         <jasypt.version>3.0.4</jasypt.version>
         <!--  apache 工具类  -->

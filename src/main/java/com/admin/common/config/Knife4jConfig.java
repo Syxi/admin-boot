@@ -70,8 +70,10 @@ public class Knife4jConfig {
             // 全局添加鉴权参数
             if (openApi.getPaths() != null) {
                 openApi.getPaths().forEach((s, pathItem) -> {
-                    // 登录接口/验证码不需要添加鉴权参数
-                    if ( s.equals("/auth/login") || s.equals("/auth/captcha")) {
+                    // 登录接口/验证码/接口文档不需要添加鉴权参数
+                    if ( s.equals("/auth/login") || s.equals("/auth/captcha") || 
+                         s.equals("/doc.html") || s.startsWith("/swagger") || 
+                         s.startsWith("/v3/api-docs")) {
                         return;
                     }
                     // 接口添加鉴权参数
