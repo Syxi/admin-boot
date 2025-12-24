@@ -20,7 +20,6 @@ public class BaseServiceBeanContext {
 
     public static SysMenuService sysMenuService;
 
-    public static WebSocketPermissionService webSocketPermissionService;
 
     @Resource
     public void setSysUserService(SysUserService sysUserService) {
@@ -48,8 +47,4 @@ public class BaseServiceBeanContext {
         BaseServiceBeanContext.sysMenuService = sysMenuService;
     }
 
-    @Resource
-    public void setWebSocketPermissionService(WebSocketPermissionService webSocketPermissionService) {
-        BaseServiceBeanContext.webSocketPermissionService = webSocketPermissionService;
-    }
 }

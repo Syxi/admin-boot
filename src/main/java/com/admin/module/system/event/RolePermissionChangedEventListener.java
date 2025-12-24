@@ -1,6 +1,5 @@
 package com.admin.module.system.event;
 
-import com.admin.common.context.BaseServiceBeanContext;
 import com.admin.module.system.service.RoleCacheService;
 import com.admin.module.system.service.TokenRefreshService;
 import lombok.RequiredArgsConstructor;
@@ -80,13 +79,6 @@ public class RolePermissionChangedEventListener {
             // 为拥有该角色的在线用户刷新Token
             tokenRefreshService.refreshOnlineUsersByRole(event.getRoleCode());
             // 通过WebSocket向拥有该角色的所有在线用户发送权限更新通知
-            try {
-                log.info("准备发送WebSocket权限更新通知: roleCode={}", event.getRoleCode());
-                BaseServiceBeanContext.webSocketPermissionService.sendPermissionUpdateNotificationByRole(event.getRoleCode());
-                log.info("已发送WebSocket权限更新通知: roleCode={}", event.getRoleCode());
-            } catch (Exception e) {
-                log.error("发送WebSocket权限更新通知失败: roleCode={}", event.getRoleCode(), e);
-            }
             log.info("角色菜单更新，已刷新缓存并为在线用户刷新Token: roleId={}, roleCode={}", 
                     event.getRoleId(), event.getRoleCode());
         }

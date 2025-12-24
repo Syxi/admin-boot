@@ -13,7 +13,6 @@ import com.admin.module.system.form.RoleForm;
 import com.admin.module.system.mapper.SysRoleMapper;
 import com.admin.module.system.query.RoleQuery;
 import com.admin.module.system.service.*;
-import com.admin.module.system.service.impl.WebSocketPermissionServiceImpl;
 import com.admin.module.system.vo.OptionVO;
 import com.admin.module.system.vo.RoleVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -27,13 +26,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -50,7 +47,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final RoleCacheService roleCacheService; // 注入RoleCacheService
     private final RedisTemplate<String, Object> redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
-    private final WebSocketPermissionServiceImpl webSocketPermissionService;
 
 
 
@@ -469,8 +465,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             for (String username : affectedUsernames) {
                 try {
                     roleCacheService.invalidateUserCache(username);
-                    // 通过WebSocket向用户发送权限更新通知
-                    webSocketPermissionService.sendPermissionUpdateNotification(username);
                 } catch (Exception e) {
                     log.error("使用户Token失效失败: username={}", username, e);
                 }
@@ -524,9 +518,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                     this, RolePermissionChangedEvent.ChangeType.ROLE_MENU_UPDATED, 
                     roleId, role.getRoleCode()));
             log.info("角色数据权限更新，已发布权限变更事件: roleId={}, roleCode={}", roleId, role.getRoleCode());
-            
-            // 通过WebSocket向拥有该角色的所有在线用户发送权限更新通知
-            webSocketPermissionService.sendPermissionUpdateNotificationByRole(role.getRoleCode());
         }
         
         return result;

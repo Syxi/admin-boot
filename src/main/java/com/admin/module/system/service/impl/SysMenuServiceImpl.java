@@ -16,7 +16,7 @@ import com.admin.module.system.service.MenuDataService;
 import com.admin.module.system.service.SysMenuService;
 import com.admin.module.system.service.SysRoleMenuService;
 import com.admin.module.system.service.SysRoleService;
-import com.admin.module.system.service.impl.WebSocketPermissionServiceImpl;
+
 import com.admin.module.system.vo.KeyValueVO;
 import com.admin.module.system.vo.MenuVO;
 import com.admin.module.system.vo.OptionVO;
@@ -704,14 +704,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
                     roleId, role.getRoleCode()));
             log.info("角色菜单更新，已发布权限变更事件: roleId={}, roleCode={}", roleId, role.getRoleCode());
             
-            // 通过WebSocket向拥有该角色的所有在线用户发送权限更新通知
-            try {
-                log.info("准备发送WebSocket权限更新通知: roleCode={}", role.getRoleCode());
-                BaseServiceBeanContext.webSocketPermissionService.sendPermissionUpdateNotificationByRole(role.getRoleCode());
-                log.info("已发送WebSocket权限更新通知: roleCode={}", role.getRoleCode());
-            } catch (Exception e) {
-                log.error("发送WebSocket权限更新通知失败: roleCode={}", role.getRoleCode(), e);
-            }
+
         } else {
             log.warn("角色不存在，无法发送权限更新通知: roleId={}", roleId);
         }
