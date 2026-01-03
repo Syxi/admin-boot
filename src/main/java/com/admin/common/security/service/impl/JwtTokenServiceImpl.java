@@ -82,7 +82,7 @@ public class JwtTokenServiceImpl implements TokenService {
         Map<String, Object> claims = new HashMap<>();
         claims.put(JwtClaimConstants.USER_ID, userDetails.getUserId());
         claims.put(JwtClaimConstants.USER_NAME, authentication.getName());
-        claims.put(JwtClaimConstants.TENANT_ID, userDetails.getDeptId());
+        claims.put(JwtClaimConstants.TENANT_ID, userDetails.getTenantId());
         claims.put(JwtClaimConstants.DATA_SCOPE, userDetails.getDataScope());
         claims.put(JwtClaimConstants.JTI, jti);
         
@@ -142,7 +142,7 @@ public class JwtTokenServiceImpl implements TokenService {
         SysUserDetails sysUserDetails = new SysUserDetails();
         sysUserDetails.setUserId(claims.get(JwtClaimConstants.USER_ID, Long.class));
         sysUserDetails.setUsername(claims.get(JwtClaimConstants.USER_NAME, String.class));
-        sysUserDetails.setDeptId(claims.get(JwtClaimConstants.TENANT_ID, Long.class));
+        sysUserDetails.setTenantId(claims.get(JwtClaimConstants.TENANT_ID, Long.class));
         sysUserDetails.setDataScope(claims.get(JwtClaimConstants.DATA_SCOPE, Integer.class));
 
         // 角色集合

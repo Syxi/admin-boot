@@ -80,7 +80,7 @@ public class RedisTokenServiceImpl implements TokenService {
         Map<String, Object> tokenInfo = new HashMap<>();
         tokenInfo.put(JwtClaimConstants.USER_ID, userDetails.getUserId());
         tokenInfo.put(JwtClaimConstants.USER_NAME, authentication.getName());
-        tokenInfo.put(JwtClaimConstants.TENANT_ID, userDetails.getDeptId());
+        tokenInfo.put(JwtClaimConstants.TENANT_ID, userDetails.getTenantId());
         tokenInfo.put(JwtClaimConstants.DATA_SCOPE, userDetails.getDataScope());
         tokenInfo.put(JwtClaimConstants.JTI, tokenId);
 
@@ -146,7 +146,7 @@ public class RedisTokenServiceImpl implements TokenService {
         SysUserDetails sysUserDetails = new SysUserDetails();
         sysUserDetails.setUserId((Long) tokenInfo.get(JwtClaimConstants.USER_ID));
         sysUserDetails.setUsername((String) tokenInfo.get(JwtClaimConstants.USER_NAME));
-        sysUserDetails.setDeptId((Long) tokenInfo.get(JwtClaimConstants.TENANT_ID));
+        sysUserDetails.setTenantId((Long) tokenInfo.get(JwtClaimConstants.TENANT_ID));
         sysUserDetails.setDataScope((Integer) tokenInfo.get(JwtClaimConstants.DATA_SCOPE));
 
         // 角色集合 - 注意：从Redis中取出时可能是HashSet，需要正确处理
@@ -256,7 +256,7 @@ public class RedisTokenServiceImpl implements TokenService {
             SysUserDetails sysUserDetails = new SysUserDetails();
             sysUserDetails.setUserId(refreshTokenClaims.get(JwtClaimConstants.USER_ID, Long.class));
             sysUserDetails.setUsername(username);
-            sysUserDetails.setDeptId(refreshTokenClaims.get(JwtClaimConstants.TENANT_ID, Long.class));
+            sysUserDetails.setTenantId(refreshTokenClaims.get(JwtClaimConstants.TENANT_ID, Long.class));
             sysUserDetails.setDataScope(refreshTokenClaims.get(JwtClaimConstants.DATA_SCOPE, Integer.class));
 
             // 角色集合 - 注意：从Redis中取出时可能是HashSet，需要正确处理

@@ -31,13 +31,14 @@ public class SysUserDetails implements UserDetails {
 
     private String username;
 
+    @Getter
+    private Long tenantId;
+
     private String password;
 
     private Long deptId;
 
     private Integer dataScope;
-
-//    private Long tenantId;
 
     @Schema(description = "账号是否可用")
     private Boolean enabled;
@@ -68,6 +69,7 @@ public class SysUserDetails implements UserDetails {
         this.authorities = authorities;
         this.username = userAuthInfo.getUsername();
         this.password = userAuthInfo.getPassword();
+        this.tenantId = userAuthInfo.getTenantId();
         this.deptId = userAuthInfo.getDeptId();
         this.dataScope = userAuthInfo.getDataScope();
         this.permissions = userAuthInfo.getPermissions();

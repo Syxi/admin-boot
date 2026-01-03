@@ -1,11 +1,13 @@
 package com.admin.common.config;
 
 import com.admin.common.handler.MyMetaObjectHandler;
+import com.admin.common.handler.MyTenantLineHandler;
 import com.admin.common.interceptor.DataPermissionInterceptor;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -42,8 +44,8 @@ public class MybatisPlusConfig {
         // 乐观锁插件，防止并发修改数据时出现覆盖问题
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
 
-        // 多租户插件（如需要可启用）
-        // interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new MyTenantLineHandler()));
+        // 多租户插件
+        interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new MyTenantLineHandler()));
 
         return interceptor;
     }

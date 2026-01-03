@@ -1,7 +1,9 @@
 package com.admin.module.system.service.impl;
 
 import com.admin.common.annotation.DataPermission;
+import com.admin.common.annotation.TenantUserLimitCheck;
 import com.admin.common.constant.SystemConstants;
+import com.admin.common.security.SecurityUtils;
 import com.admin.common.enums.*;
 import com.admin.common.excel.export.UserExportVO;
 import com.admin.common.exception.CustomException;
@@ -18,6 +20,7 @@ import com.admin.module.system.service.*;
 import com.admin.module.system.vo.TransferVO;
 import com.admin.module.system.vo.UserInfoVO;
 import com.admin.module.system.vo.UserVO;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -58,6 +61,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final PasswordEncoder passwordEncoder;
 
     private final UserLoginLogService  userLoginLogService;
+
+    private final SysTenantConfigService sysTenantConfigService;
 
 
     /**
@@ -254,6 +259,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * @return
      */
     @Override
+    @TenantUserLimitCheck
     public boolean saveUser(UserForm userForm) {
         // 判断用户名是否存在
         if (existsUsername(userForm.getUsername(), null)) {
@@ -273,11 +279,20 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setSort(userForm.getSort());
         user.setRemark(userForm.getRemark());
         user.setDeptId(userForm.getDeptId()); // 设置部门ID
+        // 设置租户ID为当前用户的租户ID
+        user.setTenantId(SecurityUtils.getTenantId());
         String password = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
         user.setPassword(password);
 
         // 新增用户
-        return this.save(user);
+        boolean result = this.save(user);
+        
+        // 如果新增用户成功，更新租户用户数
+        if (result && user.getTenantId() != null) {
+            sysTenantConfigService.updateTenantUserCount(user.getTenantId(), 1);
+        }
+        
+        return result;
     }
 
 
@@ -451,8 +466,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         queryWrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
         queryWrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
         queryWrapper.last("limit 1");
-        SysUser user = this.getOne(queryWrapper);
-
+        SysUser user = baseMapper.selectOne(queryWrapper);
+        
         // User 转 UserAuthInfo
         UserAuthInfo userAuthInfo = this.convertToUserAuthInfo(user);
 
@@ -498,7 +513,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
     /**
-     * 前端获取当前登录用户信息
+     * 用户登录成功后，前端获取当前登录用户信息
      *
      * @param username
      * @return
@@ -508,6 +523,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUsername, username).last("limit 1");
         SysUser user = this.getOne(queryWrapper);
+        
+        // 检查用户是否存在
+        if (user == null) {
+            throw new CustomException("用户不存在");
+        }
 
         UserInfoVO userInfoVO = new UserInfoVO();
         userInfoVO.setUserId(user.getUserId());
@@ -568,7 +588,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private UserAuthInfo convertToUserAuthInfo(SysUser user) {
         UserAuthInfo userAuthInfo = new UserAuthInfo();
         userAuthInfo.setUserId(user.getUserId());
-//        userAuthInfo.setTenantId(user.getTenantId());
+        userAuthInfo.setTenantId(user.getTenantId());
         userAuthInfo.setUsername(user.getUsername());
         userAuthInfo.setPassword(user.getPassword());
         userAuthInfo.setRealName(user.getRealName());

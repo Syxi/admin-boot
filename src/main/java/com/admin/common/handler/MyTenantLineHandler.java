@@ -17,8 +17,9 @@ public class MyTenantLineHandler implements TenantLineHandler {
     @Override
     public Expression getTenantId() {
         Long tenantId = SecurityUtils.getTenantId();
-        if (tenantId == null) {
-            throw new RuntimeException("无法获取当前租户ID，请检查请求头或认证信息");
+        // 如果无法获取租户ID，返回null，这样MyBatis-Plus会跳过多租户过滤
+        if (tenantId == null || tenantId == 0) {
+            return null;
         }
         return new LongValue(tenantId);
     }
@@ -28,10 +29,13 @@ public class MyTenantLineHandler implements TenantLineHandler {
         return "tenant_id"; // 数据库字段名
     }
 
-    // 忽略租户过滤的表（如租户表、字典表）
+    // 忽略租户过滤的表（如租户表、字典表等系统表）
     @Override
     public boolean ignoreTable(String tableName) {
         return "sys_tenant".equalsIgnoreCase(tableName) ||
-                "sys_dict".equalsIgnoreCase(tableName);
+                "sys_user".equalsIgnoreCase(tableName) ||
+                "sys_dict_type".equalsIgnoreCase(tableName) ||
+                "sys_dict_value".equalsIgnoreCase(tableName) ||
+                "sys_tenant_user".equalsIgnoreCase(tableName);
     }
 }

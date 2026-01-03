@@ -1,5 +1,6 @@
 package com.admin.module.system.service;
 
+import com.admin.module.system.dto.TenantUserForm;
 import com.admin.module.system.entity.SysTenant;
 import com.admin.module.system.query.TenantQuery;
 import com.admin.module.system.vo.TransferVO;
@@ -72,4 +73,18 @@ public interface SysTenantService extends IService<SysTenant> {
      * @return
      */
     List<TransferVO> selectUsersNotInTenant(Long tenantId);
+
+    /**
+     * 获取用户可访问的租户列表
+     * @return
+     */
+    List<TenantUserForm> getUserTenants();
+
+    /**
+     * 检查用户是否有权访问指定租户
+     * @param userId 用户ID
+     * @param tenantId 租户ID
+     * @return
+     */
+    boolean checkUserTenantAccess(Long userId, Long tenantId);
 }

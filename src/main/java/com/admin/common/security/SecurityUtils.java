@@ -49,7 +49,7 @@ public class SecurityUtils {
      * 获取租户id
      * @return
      */
-    public static Long getTenantId() {return getCurrentUser().map(SysUserDetails::getUserId).orElse(null);}
+    public static Long getTenantId() {return getCurrentUser().map(SysUserDetails::getTenantId).orElse(null);}
 
 
     /**

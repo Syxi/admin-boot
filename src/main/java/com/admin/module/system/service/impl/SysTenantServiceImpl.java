@@ -3,6 +3,7 @@ package com.admin.module.system.service.impl;
 import com.admin.common.enums.DeletedEnum;
 import com.admin.common.enums.StatusEnum;
 import com.admin.common.exception.CustomException;
+import com.admin.module.system.dto.TenantUserForm;
 import com.admin.module.system.entity.SysTenant;
 import com.admin.module.system.entity.SysTenantUser;
 import com.admin.module.system.entity.SysUser;
@@ -204,6 +205,53 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
         transferVO.setKey(user.getUserId());
         transferVO.setLabel(user.getUsername());
         return transferVO;
+    }
+
+    @Override
+    public List<TenantUserForm> getUserTenants() {
+        // 获取当前用户ID
+        Long userId = com.admin.common.security.SecurityUtils.getUserId();
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        
+        // 查询用户关联的租户列表
+        LambdaQueryWrapper<SysTenantUser> tenantUserQuery = new LambdaQueryWrapper<>();
+        tenantUserQuery.eq(SysTenantUser::getUserId, userId);
+        List<SysTenantUser> tenantUserList = sysTenantUserService.list(tenantUserQuery);
+        
+        if (CollectionUtils.isEmpty(tenantUserList)) {
+            return Collections.emptyList();
+        }
+        
+        // 获取租户ID列表
+        List<Long> tenantIds = tenantUserList.stream()
+                .map(SysTenantUser::getTenantId)
+                .collect(Collectors.toList());
+        
+        // 查询租户信息
+        LambdaQueryWrapper<SysTenant> tenantQuery = new LambdaQueryWrapper<>();
+        tenantQuery.in(SysTenant::getId, tenantIds);
+        List<SysTenant> tenantList = this.list(tenantQuery);
+        
+        // 转换为TenantUserForm列表
+        return tenantList.stream().map(tenant -> {
+            TenantUserForm form = new TenantUserForm();
+            form.setTenantId(tenant.getId());
+            form.setTenantName(tenant.getName());
+            form.setUserId(userId);
+            return form;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean checkUserTenantAccess(Long userId, Long tenantId) {
+        // 查询用户是否关联到指定租户
+        LambdaQueryWrapper<SysTenantUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysTenantUser::getUserId, userId)
+                .eq(SysTenantUser::getTenantId, tenantId);
+        
+        return sysTenantUserService.count(queryWrapper) > 0;
     }
 }
 

@@ -16,6 +16,8 @@
             <result property="email" column="email" jdbcType="VARCHAR"/>
             <result property="sort" column="sort" jdbcType="INTEGER"/>
             <result property="remark" column="remark" jdbcType="VARCHAR"/>
+            <result property="deptId" column="dept_id" jdbcType="BIGINT"/>
+            <result property="tenantId" column="tenant_id" jdbcType="BIGINT"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
             <result property="createUser" column="create_user" jdbcType="BIGINT"/>
             <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
@@ -27,7 +29,7 @@
     <sql id="Base_Column_List">
         user_id,username,password,
         real_name,gender,avatar,dept_id,
-        mobile,status,email,
+        tenant_id,mobile,status,email,
         sort,remark,create_time,
         create_user,update_time,update_user,
         deleted

@@ -27,10 +27,10 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
         this.strictInsertFill(metaObject, "createUser", Long.class, SecurityUtils.getUserId());
 
         // 自动填充tenantId字段
-//        Long currentTenantId = SecurityUtils.getTenantId();
-//        if (metaObject.hasSetter(TENANT_ID) && currentTenantId != null) {
-//            this.strictInsertFill(metaObject, TENANT_ID, Long.class, currentTenantId);
-//        }
+        Long currentTenantId = SecurityUtils.getTenantId();
+        if (metaObject.hasSetter(TENANT_ID) && currentTenantId != null) {
+            this.strictInsertFill(metaObject, TENANT_ID, Long.class, currentTenantId);
+        }
     }
 
     /**
