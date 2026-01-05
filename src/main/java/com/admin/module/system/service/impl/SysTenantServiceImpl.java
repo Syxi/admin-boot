@@ -98,6 +98,7 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
     private boolean exitsTenant(String name, Long id) {
         LambdaQueryWrapper<SysTenant> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysTenant::getName, name);
+        queryWrapper.eq(SysTenant::getDeleted, DeletedEnum.NO_DELETE.getValue());
         if (id != null) {
             queryWrapper.ne(SysTenant::getId, id);
         }

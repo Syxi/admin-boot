@@ -16,7 +16,7 @@ public class SysTenant {
     /**
      * 
      */
-    @TableId(type = IdType.AUTO)
+    @TableId()
     private Long id;
 
     /**
