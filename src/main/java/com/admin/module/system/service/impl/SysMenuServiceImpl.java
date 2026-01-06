@@ -4,6 +4,7 @@ import com.admin.common.constant.SystemConstants;
 import com.admin.common.context.BaseServiceBeanContext;
 import com.admin.common.enums.MenuTypeEnum;
 import com.admin.common.enums.StatusEnum;
+import com.admin.common.exception.CustomException;
 import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.dto.RouteDTO;
 import com.admin.module.system.entity.SysMenu;
@@ -404,10 +405,20 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         List<KeyValueVO> params = menuForm.getParams();
         this.paramsParsingToJson(params, menu);
 
-        if (menuType != MenuTypeEnum.BUTTON && !this.checkRouteNameExist(menuForm.getRouteName(), null)) {
+        // 验证路由名称唯一性
+        if (menuType != MenuTypeEnum.BUTTON && StringUtils.isNotBlank(menuForm.getRouteName()) && this.checkRouteNameExist(menuForm.getRouteName(), null)) {
+            throw new CustomException("路由名称已存在: " + menuForm.getRouteName());
+        }
+        
+        // 验证路由路径唯一性
+        if (StringUtils.isNotBlank(menuForm.getRoutePath()) && this.checkRoutePathExist(menuForm.getRoutePath(), null)) {
+            throw new CustomException("路由路径已存在: " + menuForm.getRoutePath());
+        }
+        
+        // 设置路由名称（仅在通过验证后）
+        if (menuType != MenuTypeEnum.BUTTON && StringUtils.isNotBlank(menuForm.getRouteName())) {
             menu.setRouteName(menuForm.getRouteName());
         }
-
 
         boolean result = this.save(menu);
 
@@ -427,8 +438,11 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return
      */
     private boolean checkRouteNameExist(String routeName, Long id) {
+        if (StringUtils.isBlank(routeName)) {
+            return false; // 空名称不检查唯一性
+        }
         LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysMenu::getMenuName, routeName);
+        queryWrapper.eq(SysMenu::getRouteName, routeName);
         if (id != null) {
             queryWrapper.ne(SysMenu::getMenuId, id);
         }
@@ -436,10 +450,28 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         return result;
     }
 
+    /**
+     * 检测路由路径是否存在
+     * @param routePath
+     * @param id
+     * @return
+     */
+    private boolean checkRoutePathExist(String routePath, Long id) {
+        if (StringUtils.isBlank(routePath)) {
+            return false; // 空路径不检查唯一性
+        }
+        LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysMenu::getRoutePath, routePath);
+        if (id != null) {
+            queryWrapper.ne(SysMenu::getMenuId, id);
+        }
+        boolean result = this.exists(queryWrapper);
+        return result;
+    }
 
     /**
      * 解析路由参数成字符串
-     * 路由参数 [{key: "id", value: "1"}, {key：“name", value: "张三"] 转换为 [{"id": "1", {"name": "张三"]
+     * 路由参数 [{key: "id", value: "1"}, {key："name", value: "张三"] 转换为 [{"id": "1", {"name": "张三"]
      *
      * @param params
      * @param menu
@@ -492,7 +524,18 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         this.paramsParsingToJson(params, menu);
 
 
-        if (menuType != MenuTypeEnum.BUTTON && !this.checkRouteNameExist(menuForm.getRouteName(), menuForm.getMenuId())) {
+        // 验证路由名称唯一性（排除当前菜单本身）
+        if (menuType != MenuTypeEnum.BUTTON && StringUtils.isNotBlank(menuForm.getRouteName()) && this.checkRouteNameExist(menuForm.getRouteName(), menuForm.getMenuId())) {
+            throw new CustomException("路由名称已存在: " + menuForm.getRouteName());
+        }
+        
+        // 验证路由路径唯一性（排除当前菜单本身）
+        if (StringUtils.isNotBlank(menuForm.getRoutePath()) && this.checkRoutePathExist(menuForm.getRoutePath(), menuForm.getMenuId())) {
+            throw new CustomException("路由路径已存在: " + menuForm.getRoutePath());
+        }
+        
+        // 设置路由名称（仅在通过验证后）
+        if (menuType != MenuTypeEnum.BUTTON && StringUtils.isNotBlank(menuForm.getRouteName())) {
             menu.setRouteName(menuForm.getRouteName());
         }
 
