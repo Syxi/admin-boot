@@ -307,6 +307,53 @@ public class RoleCacheServiceImpl implements RoleCacheService {
         }
     }
 
+    @Override
+    public void invalidateTenantUserCache(Long tenantId) {
+        try {
+            if (tenantId == null) {
+                log.warn("租户ID为空，无法清除租户用户缓存");
+                return;
+            }
+
+            // 获取所有在线用户
+            Set<String> onlineUserKeys = redisTemplate.keys(SecurityConstants.ONLINE_USER_PREFIX + "*");
+            if (CollectionUtils.isEmpty(onlineUserKeys)) {
+                log.debug("当前没有在线用户");
+                return;
+            }
+
+            int invalidatedCount = 0;
+            for (String key : onlineUserKeys) {
+                try {
+                    Map<Object, Object> userData = redisTemplate.opsForHash().entries(key);
+                    if (userData.isEmpty()) {
+                        continue;
+                    }
+
+                    String token = (String) userData.get("token");
+                    Long userId = (Long) userData.get("userId");
+
+                    // 检查该用户是否属于指定租户
+                    Long userTenantId = (Long) userData.get("tenantId");
+
+                    if (userTenantId != null && userTenantId.equals(tenantId) && token != null) {
+                        // 将Token加入黑名单
+                        tokenService.blacklistToken(token);
+                        invalidatedCount++;
+                        log.debug("已使租户用户Token失效: userId={}, tenantId={}", userId, tenantId);
+                    }
+                } catch (Exception e) {
+                    log.error("处理在线租户用户Token失败: key={}", key, e);
+                }
+            }
+
+            log.info("租户套餐变更，已使 {} 个租户用户Token失效: tenantId={}", invalidatedCount, tenantId);
+
+        } catch (Exception e) {
+            log.error("使租户用户缓存失效失败: tenantId={}", tenantId, e);
+        }
+    }
+
     /**
      * 获取菜单权限映射
      */

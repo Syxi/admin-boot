@@ -66,4 +66,11 @@ public interface RoleCacheService {
      * @param username 用户名
      */
     void invalidateUserCache(String username);
+    
+    /**
+     * 清除特定租户所有用户的缓存
+     * 
+     * @param tenantId 租户ID
+     */
+    void invalidateTenantUserCache(Long tenantId);
 }

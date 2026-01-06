@@ -20,4 +20,19 @@ public interface SysTenantConfigService extends IService<SysTenantConfig> {
      * @param increment 增量（正数为增加，负数为减少）
      */
     void updateTenantUserCount(Long tenantId, int increment);
+
+    /**
+     * 为租户分配套餐
+     * @param tenantId 租户ID
+     * @param packageId 套餐ID
+     * @return 操作结果
+     */
+    boolean assignPackageToTenant(Long tenantId, Long packageId);
+
+    /**
+     * 获取租户当前套餐信息
+     * @param tenantId 租户ID
+     * @return 租户配置信息
+     */
+    SysTenantConfig getTenantCurrentConfig(Long tenantId);
 }

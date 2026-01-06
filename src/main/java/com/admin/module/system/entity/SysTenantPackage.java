@@ -16,7 +16,7 @@ public class SysTenantPackage {
     /**
      * 主键
      */
-    @TableId(type = IdType.AUTO)
+    @TableId()
     private Long id;
 
     /**

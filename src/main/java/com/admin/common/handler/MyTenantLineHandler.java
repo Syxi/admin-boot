@@ -34,6 +34,12 @@ public class MyTenantLineHandler implements TenantLineHandler {
     public boolean ignoreTable(String tableName) {
         return "sys_tenant".equalsIgnoreCase(tableName) ||
                 "sys_user".equalsIgnoreCase(tableName) ||
+                "sys_user_role".equalsIgnoreCase(tableName) ||
+                "sys_role".equalsIgnoreCase(tableName) ||
+                "sys_role_menu".equalsIgnoreCase(tableName) ||
+                "sys_menu".equalsIgnoreCase(tableName) ||
+                "sys_dept".equalsIgnoreCase(tableName) ||
+                "sys_position".equalsIgnoreCase(tableName) ||
                 "sys_dict_type".equalsIgnoreCase(tableName) ||
                 "sys_dict_value".equalsIgnoreCase(tableName) ||
                 "sys_tenant_user".equalsIgnoreCase(tableName);

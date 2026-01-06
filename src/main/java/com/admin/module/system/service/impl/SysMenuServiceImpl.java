@@ -4,6 +4,7 @@ import com.admin.common.constant.SystemConstants;
 import com.admin.common.context.BaseServiceBeanContext;
 import com.admin.common.enums.MenuTypeEnum;
 import com.admin.common.enums.StatusEnum;
+import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.dto.RouteDTO;
 import com.admin.module.system.entity.SysMenu;
 import com.admin.module.system.entity.SysRole;
@@ -16,6 +17,7 @@ import com.admin.module.system.service.MenuDataService;
 import com.admin.module.system.service.SysMenuService;
 import com.admin.module.system.service.SysRoleMenuService;
 import com.admin.module.system.service.SysRoleService;
+import com.admin.module.system.service.TenantPackageMenuService;
 
 import com.admin.module.system.vo.KeyValueVO;
 import com.admin.module.system.vo.MenuVO;
@@ -58,6 +60,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     private final MenuDataService menuDataService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ApplicationEventPublisher eventPublisher;
+    private final TenantPackageMenuService tenantPackageMenuService;
 
 
 
@@ -215,17 +218,39 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             return Collections.emptyList();
         }
 
-        // 根据角色，找出角色分配的菜单
-        Set<Long> roleIds = menuDataService.getRoleIdsByRoleCodes(roleCodes);
-        List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
+        // 如果是admin用户，返回所有菜单
+        if (SecurityUtils.isAdmin()) {
+            LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.ne(SysMenu::getMenuType, MenuTypeEnum.BUTTON.getValue());
+            queryWrapper.orderByAsc(SysMenu::getSort);
+            List<SysMenu> menuList = this.list(queryWrapper);
+
+            // 转换成 RouteBO并填充roleCode
+            List<RouteDTO> routeDTOList = menuList.stream()
+                    .map(menu -> {
+                        RouteDTO routeDto = this.convertToRouteBO(menu);
+                        routeDto.setRoleCodes(roleCodes);
+                        return routeDto;
+                    })
+                    .collect(toList());
+
+           return buildTreeRoutes(0L, routeDTOList);
+        }
+
+        // 获取当前用户ID和租户ID
+        Long userId = SecurityUtils.getUserId();
+        Long tenantId = SecurityUtils.getTenantId();
+
+        // 根据用户ID和租户ID获取可见的菜单ID（套餐菜单 ∩ 角色菜单）
+        Set<Long> visibleMenuIds = tenantPackageMenuService.getUserVisibleMenuIds(userId, tenantId);
 
         // 菜单列表
-        if (CollectionUtils.isEmpty(menuIds)) {
+        if (CollectionUtils.isEmpty(visibleMenuIds)) {
             return Collections.emptyList();
         }
         LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.ne(SysMenu::getMenuType, MenuTypeEnum.BUTTON.getValue());
-        queryWrapper.in(SysMenu::getMenuId, menuIds);
+        queryWrapper.in(SysMenu::getMenuId, visibleMenuIds);
         queryWrapper.orderByAsc(SysMenu::getSort);
         List<SysMenu> menuList = this.list(queryWrapper);
 

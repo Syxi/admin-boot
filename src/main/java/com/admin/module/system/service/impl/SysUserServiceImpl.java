@@ -498,12 +498,26 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
             // 菜单权限
-            List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
-            if (CollectionUtils.isNotEmpty(menuIds)) {
-                // 菜单权限列表
-                Set<String> permissions = menuService.selectMenuPerms(menuIds);
-                userAuthInfo.setPermissions(permissions);
+            Set<String> permissions;
+            if (SecurityUtils.isAdmin()) {
+                // 如果是admin用户，获取所有菜单权限
+                LambdaQueryWrapper<SysMenu> adminMenuQueryWrapper = new LambdaQueryWrapper<>();
+                adminMenuQueryWrapper.isNotNull(SysMenu::getPerm); // 只获取有权限标识的菜单
+                List<SysMenu> allMenus = menuService.list(adminMenuQueryWrapper);
+                permissions = allMenus.stream()
+                        .map(SysMenu::getPerm)
+                        .filter(perm -> perm != null && !perm.isEmpty())
+                        .collect(Collectors.toSet());
+            } else {
+                List<Long> menuIds = roleMenuService.selectMenuIds(roleIds);
+                if (CollectionUtils.isNotEmpty(menuIds)) {
+                    // 菜单权限列表
+                    permissions = menuService.selectMenuPerms(menuIds);
+                } else {
+                    permissions = Collections.emptySet();
+                }
             }
+            userAuthInfo.setPermissions(permissions);
 
         }
 
@@ -554,14 +568,24 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
 
         if (CollectionUtils.isNotEmpty(roleCodes)) {
-            Set<Long> roleIdsSet = new HashSet<>(roleIds);
-            List<Long> menuIds = roleMenuService.selectMenuIds(roleIdsSet );
+            Set<String> permissions;
+            if (SecurityUtils.isAdmin()) {
+                // 如果是admin用户，获取所有菜单权限
+                LambdaQueryWrapper<SysMenu> allMenuQueryWrapper = new LambdaQueryWrapper<>();
+                allMenuQueryWrapper.isNotNull(SysMenu::getPerm); // 只获取有权限标识的菜单
+                List<SysMenu> allMenus = menuService.list(allMenuQueryWrapper);
+                permissions = allMenus.stream()
+                        .map(SysMenu::getPerm)
+                        .filter(perm -> perm != null && !perm.isEmpty())
+                        .collect(Collectors.toSet());
+            } else {
+                Set<Long> roleIdsSet = new HashSet<>(roleIds);
+                List<Long> menuIds = roleMenuService.selectMenuIds(roleIdsSet );
 
-            // 用户权限标识
-            Set<String> permissions = menuService.selectMenuPerms(menuIds);
+                // 用户权限标识
+                permissions = menuService.selectMenuPerms(menuIds);
+            }
             userInfoVO.setPerms(permissions);
-
-
         }
 
         // 用户部门名称
