@@ -166,7 +166,7 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
      */
     @Async
     @Override
-    public boolean handleFileUpload(MultipartFile[] files) {
+    public CompletableFuture<Boolean> handleFileUpload(MultipartFile[] files) {
 
         boolean result = false;
 
@@ -248,7 +248,7 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
         }
 
 
-        return result;
+        return CompletableFuture.completedFuture(result);
     }
 
 

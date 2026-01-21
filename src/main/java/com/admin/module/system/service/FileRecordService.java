@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
 * @author sy
@@ -44,7 +45,7 @@ public interface FileRecordService extends IService<FileRecord> {
      * @param files
      * @return
      */
-    boolean handleFileUpload(MultipartFile[] files);
+    CompletableFuture<Boolean> handleFileUpload(MultipartFile[] files);
 
     /**
      * 下载文件

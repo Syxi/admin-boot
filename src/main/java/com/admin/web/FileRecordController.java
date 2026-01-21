@@ -76,7 +76,7 @@ public class FileRecordController {
     @PreAuthorize("@pms.hasPerm('sys:file:upload')")
     @PostMapping("/upload")
     public ResultVO<Boolean> handleFileUpload(@RequestParam("file") MultipartFile[] file) {
-        boolean result = fileRecordService.handleFileUpload(file);
+        boolean result = fileRecordService.handleFileUpload(file).join();
         return ResultVO.judge(result);
     }
 
