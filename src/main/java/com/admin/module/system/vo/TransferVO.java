@@ -11,4 +11,6 @@ public class TransferVO {
     private Long key;
 
     private String label;
+    
+    private String realName;
 }

@@ -805,6 +805,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         TransferVO transferVO = new TransferVO();
         transferVO.setKey(sysUser.getUserId());
         transferVO.setLabel(sysUser.getUsername());
+        transferVO.setRealName(sysUser.getRealName());
         return  transferVO;
     }
 

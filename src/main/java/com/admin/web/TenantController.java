@@ -1,21 +1,27 @@
 package com.admin.web;
 
-import com.admin.common.annotation.NoRepeatSubmit;
-import com.admin.common.result.PageResult;
-import com.admin.common.result.ResultVO;
-import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.dto.TenantUserForm;
 import com.admin.module.system.entity.SysTenant;
 import com.admin.module.system.query.TenantQuery;
 import com.admin.module.system.service.SysTenantService;
 import com.admin.module.system.vo.TransferVO;
+import com.admin.common.result.PageResult;
+import com.admin.common.result.ResultVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -36,21 +42,16 @@ public class TenantController {
 
 
     @Operation(summary = "新增租户")
-    @NoRepeatSubmit
-    @PreAuthorize("@pms.hasPerm('sys:tenant:add')")
     @PostMapping("/add")
-    public ResultVO<Boolean> addTenant(@RequestBody SysTenant tenant) {
+    public ResultVO<Boolean> addTenant(@Valid @RequestBody SysTenant tenant) {
         boolean result = tenantService.saveTenant(tenant);
         return ResultVO.judge(result);
     }
 
 
-
     @Operation(summary = "更新租户")
-    @NoRepeatSubmit
-    @PreAuthorize("@pms.hasPerm('sys:tenant:edit')")
     @PutMapping("/edit")
-    public ResultVO<Boolean> editUser(@RequestBody SysTenant tenant) {
+    public ResultVO<Boolean> editUser(@Valid @RequestBody SysTenant tenant) {
         boolean result = tenantService.updateTenant(tenant);
         return ResultVO.judge(result);
     }
@@ -65,9 +66,7 @@ public class TenantController {
 
 
 
-
     @Operation(summary = "批量删除租户")
-    @PreAuthorize("@pms.hasPerm('sys:tenant:delete')")
     @DeleteMapping("/delete")
     public ResultVO<Boolean> batchRemoveTenant(@RequestBody List<Long> ids) {
         boolean result = tenantService.deleteBatchTenants(ids);
@@ -75,11 +74,24 @@ public class TenantController {
     }
 
     @Operation(summary = "给租户分配用户")
-    @PreAuthorize("@pms.hasPerm('sys:tenant:user:add')")
-    @PostMapping("/addUser/{id}")
+    @PutMapping("/addUser/{id}")
     public ResultVO<Boolean> updateTenantUsers(@RequestBody List<Long> userIds, @PathVariable("id") Long id) {
         boolean result = tenantService.updateTenantUsers(userIds, id);
         return ResultVO.judge(result);
+    }
+
+    @Operation(summary = "为租户添加单个用户")
+    @PostMapping("/addUser/{tenantId}/{userId}")
+    public ResultVO<Boolean> addUserToTenant(@PathVariable("tenantId") Long tenantId, @PathVariable("userId") Long userId) {
+        boolean result = tenantService.addUserToTenant(tenantId, userId);
+        return ResultVO.success(result);
+    }
+
+    @Operation(summary = "从租户移除单个用户")
+    @DeleteMapping("/removeUser/{tenantId}/{userId}")
+    public ResultVO<Boolean> removeUserFromTenant(@PathVariable("tenantId") Long tenantId, @PathVariable("userId") Long userId) {
+        boolean result = tenantService.removeUserFromTenant(tenantId, userId);
+        return ResultVO.success(result);
     }
 
     @Operation(summary = "获取租户下所有用户")
@@ -96,13 +108,31 @@ public class TenantController {
         return ResultVO.success(transferVOS);
     }
 
+    @Operation(summary = "分页获取未分配租户的用户")
+    @GetMapping("/userNotInTenant/page/{id}")
+    public ResultVO<IPage<TransferVO>> selectUsersNotInTenantPage(@PathVariable("id") Long id, 
+                                                                  @RequestParam(defaultValue = "1") Integer pageNum, 
+                                                                  @RequestParam(defaultValue = "10") Integer pageSize,
+                                                                  @RequestParam(required = false) String keyword) {
+        IPage<TransferVO> transferVOS = tenantService.selectUsersNotInTenantPage(id, pageNum, pageSize, keyword);
+        return ResultVO.success(transferVOS);
+    }
+
+    @Operation(summary = "分页获取租户下的用户")
+    @GetMapping("/usersInTenant/page/{id}")
+    public ResultVO<IPage<TransferVO>> selectUsersInTenantPage(@PathVariable("id") Long id,
+                                                               @RequestParam(defaultValue = "1") Integer pageNum, 
+                                                               @RequestParam(defaultValue = "10") Integer pageSize,
+                                                               @RequestParam(required = false) String keyword) {
+        IPage<TransferVO> transferVOS = tenantService.selectUsersInTenantPage(id, pageNum, pageSize, keyword);
+        return ResultVO.success(transferVOS);
+    }
 
     /**
      * 切换租户
      */
     @Operation(summary = "切换租户")
     @PutMapping("/switch")
-    @PreAuthorize("hasAuthority('system:tenant:switch')")
     public ResultVO<Void> switchTenant(@RequestBody TenantUserForm form) {
         Long targetTenantId = form.getTenantId();
 
@@ -111,7 +141,7 @@ public class TenantController {
         }
 
         // 验证用户是否有权访问目标租户
-        Long userId = SecurityUtils.getUserId();
+        Long userId = com.admin.common.security.SecurityUtils.getUserId();
         if (userId == null) {
             return ResultVO.error("用户未登录");
         }
@@ -130,8 +160,6 @@ public class TenantController {
      * 获取用户可访问的租户列表
      */
     @Operation(summary = "获取用户可访问的租户列表")
-    @GetMapping("/userTenants")
-    @PreAuthorize("hasAuthority('system:tenant:list')")
     public ResultVO<List<TenantUserForm>> getUserTenants() {
         // 实现获取用户租户列表逻辑
         return ResultVO.success(tenantService.getUserTenants());

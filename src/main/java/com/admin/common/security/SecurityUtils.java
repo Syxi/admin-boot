@@ -67,7 +67,7 @@ public class SecurityUtils {
      */
     public static boolean isAdmin() {
         Set<String> roles = getRoleCodes();
-        if (roles.contains(SystemConstants.ADMIN_ROLE_CODE)) {
+        if (roles.contains(SystemConstants.ADMIN_ROLE_CODE) || SystemConstants.ADMIN_USERNAME.equals(SecurityUtils.getUserName())) {
             return true;
         } else {
             return false;

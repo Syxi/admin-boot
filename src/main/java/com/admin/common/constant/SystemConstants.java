@@ -17,6 +17,9 @@ public class SystemConstants {
      // 超级管理员角色名称
     public static final String ADMIN_ROLE_NAME = "admin";
 
+    // 超级管理员用户名
+    public static final String ADMIN_USERNAME = "admin";
+
     // 根节点id
     public static final Long ROOT_NODE_ID = 0L;
 
