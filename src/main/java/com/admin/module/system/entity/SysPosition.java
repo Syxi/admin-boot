@@ -1,11 +1,9 @@
 package com.admin.module.system.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.admin.common.base.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
 
 /**
  * 岗位表
@@ -13,18 +11,13 @@ import java.time.LocalDateTime;
  */
 @TableName(value ="sys_position")
 @Data
-public class SysPosition implements Serializable {
+public class SysPosition extends BaseEntity {
     /**
      * 
      */
     @TableId
     private Long positionId;
 
-
-    /**
-     * 租户ID
-     */
-    private Long tenantId;
 
     /**
      * 岗位名称
@@ -62,28 +55,4 @@ public class SysPosition implements Serializable {
      */
     private Integer education;
 
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime updateTime;
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long createUser;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long updateUser;
-
-    /**
-     * 逻辑删除标识(0-未删除；1-已删除)
-     */
-    @TableLogic
-    private Integer deleted;
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }

@@ -1,23 +1,17 @@
 package com.admin.module.system.entity;
 
+import com.admin.common.base.BaseEntity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class FileRecord {
+public class FileRecord extends BaseEntity {
 
     // 文件id
     private Long id;
-
-    /**
-     * 租户ID
-     */
-    private Long tenantId;
 
     // 文件名称
     private String fileName;
@@ -42,10 +36,4 @@ public class FileRecord {
 
     // 文件转换状态
     private Integer fileConversionStatus;
-
-    private String createUser;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
 }

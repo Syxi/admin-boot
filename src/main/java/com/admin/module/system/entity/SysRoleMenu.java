@@ -29,6 +29,8 @@ public class SysRoleMenu {
     /**
      * 租户ID
      */
+    @TableField(fill = FieldFill.INSERT)
+    @JsonInclude(value = JsonInclude.Include.NON_NULL)
     private Long tenantId;
 
     /**

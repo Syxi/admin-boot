@@ -26,6 +26,8 @@ public class Image implements Serializable {
     /**
      * 租户ID
      */
+    @TableField(fill = FieldFill.INSERT)
+    @JsonInclude(value = JsonInclude.Include.NON_NULL)
     private Long tenantId;
 
     /**

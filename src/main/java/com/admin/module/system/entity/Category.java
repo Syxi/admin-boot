@@ -1,14 +1,9 @@
 package com.admin.module.system.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
-import com.baomidou.mybatisplus.annotation.TableField;
+import com.admin.common.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
 
 /**
  * 文章分类表
@@ -16,17 +11,13 @@ import java.time.LocalDateTime;
  */
 @TableName(value ="t_category")
 @Data
-public class Category implements Serializable {
+public class Category extends BaseEntity {
     /**
      * 
      */
     @TableId
     private Long categoryId;
 
-    /**
-     * 租户ID
-     */
-    private Long tenantId;
 
     /**
      * 分类名称
@@ -48,22 +39,4 @@ public class Category implements Serializable {
      */
     private Integer sort;
 
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime updateTime;
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long createUser;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long updateUser;
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }

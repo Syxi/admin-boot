@@ -1,14 +1,16 @@
 package com.admin.module.system.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.admin.common.base.BaseEntity;
 import com.admin.common.enums.MenuTypeEnum;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 
 /**
     * 菜单管理
@@ -18,17 +20,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @TableName(value = "sys_menu")
-public class SysMenu {
+public class SysMenu extends BaseEntity {
 
     private static final Long serialVersionUID = 1L;
 
     @TableId(value = "menu_id")
     private Long menuId;
 
-    /**
-     * 租户ID
-     */
-    private Long tenantId;
 
     /**
      * 父菜单ID
@@ -127,29 +125,6 @@ public class SysMenu {
      */
     @TableField(value = "remark")
     private String remark;
-
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime updateTime;
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long createUser;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long updateUser;
-
-    /**
-     * 逻辑删除标识(0-未删除；1-已删除)
-     */
-    @TableLogic
-    private Integer deleted;
 
 
 

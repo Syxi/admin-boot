@@ -1,13 +1,13 @@
 package com.admin.module.system.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.admin.common.base.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
     * 字典类型表
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @TableName(value = "sys_dict_type")
-public class SysDictType {
+public class SysDictType extends BaseEntity {
 
     /**
      * 主键
@@ -25,10 +25,6 @@ public class SysDictType {
     @TableId(value = "id")
     private Long id;
 
-    /**
-     * 租户ID
-     */
-    private Long tenantId;
 
     /**
      * 编码类型
@@ -59,26 +55,4 @@ public class SysDictType {
      */
     @TableField(value = "remark")
     private String remark;
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime updateTime;
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long createUser;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long updateUser;
-
-    /**
-     * 逻辑删除标识(0-未删除；1-已删除)
-     */
-    @TableLogic
-    private Integer deleted;
 }

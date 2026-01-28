@@ -29,6 +29,13 @@ public class SysTenantPackageMenu {
      */
     private Long menuId;
 
+    /**
+     * 租户ID
+     */
+    @TableField(fill = FieldFill.INSERT)
+    @JsonInclude(value = JsonInclude.Include.NON_NULL)
+    private Long tenantId;
+
     @TableField(fill = FieldFill.INSERT)
     @JsonInclude(value = JsonInclude.Include.NON_NULL)
     private LocalDateTime createTime;

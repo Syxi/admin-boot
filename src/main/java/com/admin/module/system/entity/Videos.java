@@ -1,14 +1,10 @@
 package com.admin.module.system.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.admin.common.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
 
 /**
  * 视频文件记录表
@@ -16,17 +12,13 @@ import java.time.LocalDateTime;
  */
 @TableName(value ="t_videos")
 @Data
-public class Videos implements Serializable {
+public class Videos extends BaseEntity {
     /**
      * 
      */
     @TableId
     private Long id;
 
-    /**
-     * 租户ID
-     */
-    private Long tenantId;
 
     /**
      * 视频名称
@@ -47,28 +39,6 @@ public class Videos implements Serializable {
      * 备注
      */
     private String remark;
-
-
-    /**
-     * 文件上传时间
-     */
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime createTime;
-
-    /**
-     * 文件更新时间
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime updateTime;
-
-    /**
-     * 上传者id
-     */
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long createUser;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

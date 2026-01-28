@@ -1,5 +1,6 @@
 package com.admin.module.system.entity;
 
+import com.admin.common.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
  */
 @TableName(value ="sys_tenant_package")
 @Data
-public class SysTenantPackage {
+public class SysTenantPackage extends BaseEntity {
     /**
      * 主键
      */
@@ -64,24 +65,5 @@ public class SysTenantPackage {
      */
     private String remark;
 
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime createTime;
 
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private LocalDateTime updateTime;
-
-    @TableField(fill = FieldFill.INSERT)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long createUser;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonInclude(value = JsonInclude.Include.NON_NULL)
-    private Long updateUser;
-
-    /**
-     * 逻辑删除标识(0:未删除;-1:已删除)
-     */
-    private Integer deleted;
 }
