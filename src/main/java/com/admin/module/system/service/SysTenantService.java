@@ -60,19 +60,7 @@ public interface SysTenantService extends IService<SysTenant> {
      */
     boolean updateTenantUsers(List<Long> userIds, Long tenantId);
 
-    /**
-     * 获取租户下的用户
-     * @param tenantId
-     * @return
-     */
-    List<TransferVO> selectUsersInTenant(Long tenantId);
 
-    /**
-     * 获取未分配租户的用户
-     * @param tenantId
-     * @return
-     */
-    List<TransferVO> selectUsersNotInTenant(Long tenantId);
 
     /**
      * 获取用户可访问的租户列表
@@ -88,33 +76,17 @@ public interface SysTenantService extends IService<SysTenant> {
      */
     boolean checkUserTenantAccess(Long userId, Long tenantId);
 
-    /**
-     * 分页获取未分配租户的用户
-     */
-    IPage<TransferVO> selectUsersNotInTenantPage(Long tenantId, Integer pageNum, Integer pageSize);
 
     /**
      * 分页获取未分配租户的用户（支持关键字搜索）
      */
     IPage<TransferVO> selectUsersNotInTenantPage(Long tenantId, Integer pageNum, Integer pageSize, String keyword);
 
-    /**
-     * 分页获取租户下的用户
-     */
-    IPage<TransferVO> selectUsersInTenantPage(Long tenantId, Integer pageNum, Integer pageSize);
 
     /**
      * 分页获取租户下的用户（支持关键字搜索）
      */
     IPage<TransferVO> selectUsersInTenantPage(Long tenantId, Integer pageNum, Integer pageSize, String keyword);
 
-    /**
-     * 为租户添加单个用户
-     */
-    boolean addUserToTenant(Long tenantId, Long userId);
 
-    /**
-     * 从租户移除单个用户
-     */
-    boolean removeUserFromTenant(Long tenantId, Long userId);
 }

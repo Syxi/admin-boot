@@ -73,60 +73,34 @@ public class TenantController {
         return ResultVO.judge(result);
     }
 
-    @Operation(summary = "给租户分配用户")
+    @Operation(summary = "租户分配用户")
     @PutMapping("/addUser/{id}")
     public ResultVO<Boolean> updateTenantUsers(@RequestBody List<Long> userIds, @PathVariable("id") Long id) {
         boolean result = tenantService.updateTenantUsers(userIds, id);
         return ResultVO.judge(result);
     }
 
-    @Operation(summary = "为租户添加单个用户")
-    @PostMapping("/addUser/{tenantId}/{userId}")
-    public ResultVO<Boolean> addUserToTenant(@PathVariable("tenantId") Long tenantId, @PathVariable("userId") Long userId) {
-        boolean result = tenantService.addUserToTenant(tenantId, userId);
-        return ResultVO.success(result);
-    }
-
-    @Operation(summary = "从租户移除单个用户")
-    @DeleteMapping("/removeUser/{tenantId}/{userId}")
-    public ResultVO<Boolean> removeUserFromTenant(@PathVariable("tenantId") Long tenantId, @PathVariable("userId") Long userId) {
-        boolean result = tenantService.removeUserFromTenant(tenantId, userId);
-        return ResultVO.success(result);
-    }
-
-    @Operation(summary = "获取租户下所有用户")
-    @GetMapping("/usersInTenant/{id}")
-    public ResultVO<List<TransferVO>> selectUsersInTenant(@PathVariable("id") Long id) {
-        List<TransferVO> transferVOS = tenantService.selectUsersInTenant(id);
-        return ResultVO.success(transferVOS);
-    }
-
-    @Operation(summary = "未分配租户的所有用户")
-    @GetMapping("/userNotInTenant/{id}")
-    public ResultVO<List<TransferVO>> selectUsersNotInTenant(@PathVariable("id") Long id) {
-        List<TransferVO> transferVOS = tenantService.selectUsersNotInTenant(id);
-        return ResultVO.success(transferVOS);
-    }
 
     @Operation(summary = "分页获取未分配租户的用户")
     @GetMapping("/userNotInTenant/page/{id}")
-    public ResultVO<IPage<TransferVO>> selectUsersNotInTenantPage(@PathVariable("id") Long id, 
-                                                                  @RequestParam(defaultValue = "1") Integer pageNum, 
+    public PageResult<TransferVO> selectUsersNotInTenantPage(@PathVariable("id") Long id,
+                                                                  @RequestParam(defaultValue = "1") Integer pageNum,
                                                                   @RequestParam(defaultValue = "10") Integer pageSize,
                                                                   @RequestParam(required = false) String keyword) {
         IPage<TransferVO> transferVOS = tenantService.selectUsersNotInTenantPage(id, pageNum, pageSize, keyword);
-        return ResultVO.success(transferVOS);
+        return PageResult.success(transferVOS);
     }
 
-    @Operation(summary = "分页获取租户下的用户")
-    @GetMapping("/usersInTenant/page/{id}")
-    public ResultVO<IPage<TransferVO>> selectUsersInTenantPage(@PathVariable("id") Long id,
-                                                               @RequestParam(defaultValue = "1") Integer pageNum, 
-                                                               @RequestParam(defaultValue = "10") Integer pageSize,
-                                                               @RequestParam(required = false) String keyword) {
+    @Operation(summary = "分页获取已分配租户的用户")
+    @GetMapping("/userInTenant/page/{id}")
+    public PageResult<TransferVO> selectUsersInTenantPage(@PathVariable("id") Long id,
+                                                             @RequestParam(defaultValue = "1") Integer pageNum,
+                                                             @RequestParam(defaultValue = "10") Integer pageSize,
+                                                             @RequestParam(required = false) String keyword) {
         IPage<TransferVO> transferVOS = tenantService.selectUsersInTenantPage(id, pageNum, pageSize, keyword);
-        return ResultVO.success(transferVOS);
+        return PageResult.success(transferVOS);
     }
+
 
     /**
      * 切换租户
@@ -156,12 +130,9 @@ public class TenantController {
         return ResultVO.success();
     }
 
-    /**
-     * 获取用户可访问的租户列表
-     */
     @Operation(summary = "获取用户可访问的租户列表")
+    @GetMapping("/userTenants")
     public ResultVO<List<TenantUserForm>> getUserTenants() {
-        // 实现获取用户租户列表逻辑
         return ResultVO.success(tenantService.getUserTenants());
     }
 

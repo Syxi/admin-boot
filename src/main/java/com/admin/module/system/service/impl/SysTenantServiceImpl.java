@@ -15,11 +15,11 @@ import com.admin.module.system.service.SysTenantUserService;
 import com.admin.module.system.service.SysUserService;
 import com.admin.module.system.vo.TransferVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toList;
 
 /**
 * @author 70993
@@ -154,9 +152,12 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
     public boolean deleteBatchTenants(List<Long> ids) {
         boolean result = this.removeBatchByIds(ids);
 
-        // 删除租户用户关联数据
         if (result) {
-            sysTenantUserService.removeByTenantIds(ids);
+            // 同时将属于这些租户的用户租户ID设为null
+            LambdaUpdateWrapper<SysUser> userUpdateWrapper = new LambdaUpdateWrapper<>();
+            userUpdateWrapper.in(SysUser::getTenantId, ids)
+                           .set(SysUser::getTenantId, null);
+            sysUserService.update(userUpdateWrapper);
         }
         return result;
     }
@@ -169,70 +170,31 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
      * @return
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateTenantUsers(List<Long> userIds, Long tenantId) {
-        LambdaQueryWrapper<SysTenantUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysTenantUser::getTenantId, tenantId);
-        List<SysTenantUser> tenantUserList = sysTenantUserService.list(queryWrapper);
-        sysTenantUserService.removeBatchByIds(tenantUserList);
-
-        List<SysTenantUser> sysTenantUserList = userIds.stream()
-                .map(userId -> new SysTenantUser(userId, tenantId))
-                .toList();
-        sysTenantUserService.saveBatch(sysTenantUserList);
-        return true;
-    }
-
-    /**
-     * 获取租户下的用户
-     *
-     * @param tenantId
-     * @return
-     */
-    @Override
-    public List<TransferVO> selectUsersInTenant(Long tenantId) {
-        List<Long> userIds = sysTenantUserService.selectUserIdsByTenantId(tenantId);
-        if (CollectionUtils.isEmpty(userIds)) {
-            return Collections.emptyList();
+        if (userIds == null || userIds.isEmpty()) {
+            // 如果没有用户提供，先清除该租户的所有用户关联
+            LambdaUpdateWrapper<SysUser> clearUpdateWrapper = new LambdaUpdateWrapper<>();
+            clearUpdateWrapper.eq(SysUser::getTenantId, tenantId)
+                             .set(SysUser::getTenantId, null);
+            sysUserService.update(clearUpdateWrapper);
+            return true;
         }
-
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(SysUser::getUserId, userIds);
-        wrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        wrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
-        wrapper.orderByAsc(SysUser::getSort);
-        List<SysUser> userList = sysUserService.list(wrapper);
-        List<TransferVO> transferVOList = userList.stream()
-                .map(this::convertToTransferVO)
-                .collect(toList());
-        return transferVOList;
-    }
-
-    /**
-     * 获取未分配租户的用户
-     *
-     * @param tenantId
-     * @return
-     */
-    @Override
-    public List<TransferVO> selectUsersNotInTenant(Long tenantId) {
-        // 获取已在租户中的用户ID列表
-        List<Long> userIdsInTenant = sysTenantUserService.selectUserIdsByTenantId(tenantId);
         
-        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
-        queryWrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        // 如果已有用户在租户中，则排除这些用户
-        if (CollectionUtils.isNotEmpty(userIdsInTenant)) {
-            queryWrapper.notIn(SysUser::getUserId, userIdsInTenant);
-        }
-        queryWrapper.orderByAsc(SysUser::getSort);
-
-        List<TransferVO> transferVOS = sysUserService.list(queryWrapper)
-                .stream()
-                .map(this::convertToTransferVO)
-                .collect(Collectors.toList());
-        return transferVOS;
+        // 先清除该租户的所有用户关联
+        LambdaUpdateWrapper<SysUser> clearUpdateWrapper = new LambdaUpdateWrapper<>();
+        clearUpdateWrapper.eq(SysUser::getTenantId, tenantId)
+                         .set(SysUser::getTenantId, null);
+        sysUserService.update(clearUpdateWrapper);
+        
+        // 再为提供的用户设置租户ID
+        LambdaUpdateWrapper<SysUser> userUpdateWrapper = new LambdaUpdateWrapper<>();
+        userUpdateWrapper.in(SysUser::getUserId, userIds)
+                       .set(SysUser::getTenantId, tenantId);
+        return sysUserService.update(userUpdateWrapper);
     }
+
+
 
     private TransferVO convertToTransferVO(SysUser user) {
         TransferVO transferVO = new TransferVO();
@@ -250,222 +212,84 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
             return Collections.emptyList();
         }
         
-        // 查询用户关联的租户列表
-        LambdaQueryWrapper<SysTenantUser> tenantUserQuery = new LambdaQueryWrapper<>();
-        tenantUserQuery.eq(SysTenantUser::getUserId, userId);
-        List<SysTenantUser> tenantUserList = sysTenantUserService.list(tenantUserQuery);
-        
-        if (CollectionUtils.isEmpty(tenantUserList)) {
+        // 直接查询当前用户的信息以获取其租户ID
+        SysUser currentUser = sysUserService.getById(userId);
+        if (currentUser == null || currentUser.getTenantId() == null) {
             return Collections.emptyList();
         }
         
-        // 获取租户ID列表
-        List<Long> tenantIds = tenantUserList.stream()
-                .map(SysTenantUser::getTenantId)
-                .collect(Collectors.toList());
-        
-        // 查询租户信息
-        LambdaQueryWrapper<SysTenant> tenantQuery = new LambdaQueryWrapper<>();
-        tenantQuery.in(SysTenant::getId, tenantIds);
-        List<SysTenant> tenantList = this.list(tenantQuery);
+        // 查询用户所属租户的信息
+        SysTenant tenant = this.getById(currentUser.getTenantId());
+        if (tenant == null) {
+            return Collections.emptyList();
+        }
         
         // 转换为TenantUserForm列表
-        return tenantList.stream().map(tenant -> {
-            TenantUserForm form = new TenantUserForm();
-            form.setTenantId(tenant.getId());
-            form.setTenantName(tenant.getName());
-            form.setUserId(userId);
-            return form;
-        }).collect(Collectors.toList());
+        TenantUserForm form = new TenantUserForm();
+        form.setTenantId(tenant.getId());
+        form.setTenantName(tenant.getName());
+        form.setUserId(userId);
+        return Collections.singletonList(form);
     }
 
     @Override
     public boolean checkUserTenantAccess(Long userId, Long tenantId) {
-        // 查询用户是否关联到指定租户
-        LambdaQueryWrapper<SysTenantUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysTenantUser::getUserId, userId)
-                .eq(SysTenantUser::getTenantId, tenantId);
-        
-        return sysTenantUserService.count(queryWrapper) > 0;
-    }
-
-    @Override
-    public IPage<TransferVO> selectUsersNotInTenantPage(Long tenantId, Integer pageNum, Integer pageSize) {
-        // 获取已在租户中的用户ID列表
-        List<Long> userIdsInTenant = sysTenantUserService.selectUserIdsByTenantId(tenantId);
-        
+        // 查询用户是否属于指定租户（通过tenant_id字段判断）
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
-        queryWrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        // 如果已有用户在租户中，则排除这些用户
-        if (CollectionUtils.isNotEmpty(userIdsInTenant)) {
-            queryWrapper.notIn(SysUser::getUserId, userIdsInTenant);
-        }
-        queryWrapper.orderByAsc(SysUser::getSort);
-
-        // 创建分页对象
-        Page<SysUser> page = new Page<>(pageNum, pageSize);
-        IPage<SysUser> userPage = sysUserService.page(page, queryWrapper);
+        queryWrapper.eq(SysUser::getUserId, userId)
+                .eq(SysUser::getTenantId, tenantId);
         
-        // 转换为TransferVO分页对象
-        List<TransferVO> transferVOList = userPage.getRecords().stream()
-                .map(this::convertToTransferVO)
-                .collect(Collectors.toList());
-        
-        IPage<TransferVO> transferVOPage = new Page<>();
-        transferVOPage.setRecords(transferVOList);
-        transferVOPage.setCurrent(userPage.getCurrent());
-        transferVOPage.setSize(userPage.getSize());
-        transferVOPage.setTotal(userPage.getTotal());
-        
-        return transferVOPage;
+        return sysUserService.count(queryWrapper) > 0;
     }
 
     @Override
     public IPage<TransferVO> selectUsersNotInTenantPage(Long tenantId, Integer pageNum, Integer pageSize, String keyword) {
-        // 获取已在租户中的用户ID列表
-        List<Long> userIdsInTenant = sysTenantUserService.selectUserIdsByTenantId(tenantId);
-        
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
         queryWrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        // 如果已有用户在租户中，则排除这些用户
-        if (CollectionUtils.isNotEmpty(userIdsInTenant)) {
-            queryWrapper.notIn(SysUser::getUserId, userIdsInTenant);
-        }
-        
+        // 查询租户ID不等于指定租户ID的用户，或者租户ID为null的用户
+        queryWrapper.and(wrapper ->
+            wrapper.ne(SysUser::getTenantId, tenantId).or().isNull(SysUser::getTenantId)
+        );
+
         // 添加关键词搜索条件
         if (StringUtils.isNotBlank(keyword)) {
             queryWrapper.and(wrapper -> wrapper.like(SysUser::getUsername, keyword).or().like(SysUser::getRealName, keyword));
         }
-        
+
         queryWrapper.orderByAsc(SysUser::getSort);
 
         // 创建分页对象
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         IPage<SysUser> userPage = sysUserService.page(page, queryWrapper);
-        
+
         // 转换为TransferVO分页对象
-        List<TransferVO> transferVOList = userPage.getRecords().stream()
-                .map(this::convertToTransferVO)
-                .collect(Collectors.toList());
-        
-        IPage<TransferVO> transferVOPage = new Page<>();
-        transferVOPage.setRecords(transferVOList);
-        transferVOPage.setCurrent(userPage.getCurrent());
-        transferVOPage.setSize(userPage.getSize());
-        transferVOPage.setTotal(userPage.getTotal());
-        
-        return transferVOPage;
+        return userPage.convert(this::convertToTransferVO);
     }
 
-    @Override
-    public IPage<TransferVO> selectUsersInTenantPage(Long tenantId, Integer pageNum, Integer pageSize) {
-        List<Long> userIds = sysTenantUserService.selectUserIdsByTenantId(tenantId);
-        if (CollectionUtils.isEmpty(userIds)) {
-            // 返回空分页对象
-            IPage<TransferVO> emptyPage = new Page<>();
-            emptyPage.setRecords(Collections.emptyList());
-            emptyPage.setCurrent(pageNum);
-            emptyPage.setSize(pageSize);
-            emptyPage.setTotal(0);
-            return emptyPage;
-        }
-
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(SysUser::getUserId, userIds);
-        wrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        wrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
-        wrapper.orderByAsc(SysUser::getSort);
-
-        // 创建分页对象
-        Page<SysUser> page = new Page<>(pageNum, pageSize);
-        IPage<SysUser> userPage = sysUserService.page(page, wrapper);
-        
-        // 转换为TransferVO分页对象
-        List<TransferVO> transferVOList = userPage.getRecords().stream()
-                .map(this::convertToTransferVO)
-                .collect(Collectors.toList());
-        
-        IPage<TransferVO> transferVOPage = new Page<>();
-        transferVOPage.setRecords(transferVOList);
-        transferVOPage.setCurrent(userPage.getCurrent());
-        transferVOPage.setSize(userPage.getSize());
-        transferVOPage.setTotal(userPage.getTotal());
-        
-        return transferVOPage;
-    }
 
     @Override
     public IPage<TransferVO> selectUsersInTenantPage(Long tenantId, Integer pageNum, Integer pageSize, String keyword) {
-        List<Long> userIds = sysTenantUserService.selectUserIdsByTenantId(tenantId);
-        if (CollectionUtils.isEmpty(userIds)) {
-            // 返回空分页对象
-            IPage<TransferVO> emptyPage = new Page<>();
-            emptyPage.setRecords(Collections.emptyList());
-            emptyPage.setCurrent(pageNum);
-            emptyPage.setSize(pageSize);
-            emptyPage.setTotal(0);
-            return emptyPage;
-        }
-
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(SysUser::getUserId, userIds);
-        wrapper.eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue());
-        wrapper.eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
-        
+        wrapper.eq(SysUser::getTenantId, tenantId)  // 根据tenant_id字段查询
+               .eq(SysUser::getDeleted, DeletedEnum.NO_DELETE.getValue())
+               .eq(SysUser::getStatus, StatusEnum.ENABLE.getValue());
+
         // 添加关键词搜索条件
         if (StringUtils.isNotBlank(keyword)) {
             wrapper.and(w -> w.like(SysUser::getUsername, keyword).or().like(SysUser::getRealName, keyword));
         }
-        
+
         wrapper.orderByAsc(SysUser::getSort);
 
         // 创建分页对象
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         IPage<SysUser> userPage = sysUserService.page(page, wrapper);
-        
+
         // 转换为TransferVO分页对象
-        List<TransferVO> transferVOList = userPage.getRecords().stream()
-                .map(this::convertToTransferVO)
-                .collect(Collectors.toList());
-        
-        IPage<TransferVO> transferVOPage = new Page<>();
-        transferVOPage.setRecords(transferVOList);
-        transferVOPage.setCurrent(userPage.getCurrent());
-        transferVOPage.setSize(userPage.getSize());
-        transferVOPage.setTotal(userPage.getTotal());
-        
-        return transferVOPage;
+        return userPage.convert(this::convertToTransferVO);
     }
 
-    @Override
-    public boolean addUserToTenant(Long tenantId, Long userId) {
-        // 检查用户是否已存在于租户中
-        LambdaQueryWrapper<SysTenantUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysTenantUser::getTenantId, tenantId)
-                 .eq(SysTenantUser::getUserId, userId);
-        
-        if (sysTenantUserService.count(queryWrapper) > 0) {
-            // 用户已存在，无需重复添加
-            return true;
-        }
-        
-        // 添加用户到租户
-        SysTenantUser tenantUser = new SysTenantUser(userId, tenantId);
-        
-        return sysTenantUserService.save(tenantUser);
-    }
-
-    @Override
-    public boolean removeUserFromTenant(Long tenantId, Long userId) {
-        // 删除租户用户关联
-        LambdaQueryWrapper<SysTenantUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysTenantUser::getTenantId, tenantId)
-                 .eq(SysTenantUser::getUserId, userId);
-        
-        return sysTenantUserService.remove(queryWrapper);
-    }
 }
 
 
