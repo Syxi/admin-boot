@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.module.system.mapper.FileChunkMapper">
+
+    <resultMap id="BaseResultMap" type="com.admin.module.system.entity.FileChunk">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="identifier" column="identifier" jdbcType="VARCHAR"/>
+        <result property="filename" column="filename" jdbcType="VARCHAR"/>
+        <result property="totalSize" column="total_size" jdbcType="BIGINT"/>
+        <result property="totalChunks" column="total_chunks" jdbcType="INTEGER"/>
+        <result property="chunkNumber" column="chunk_number" jdbcType="INTEGER"/>
+        <result property="chunkSize" column="chunk_size" jdbcType="BIGINT"/>
+        <result property="chunkHash" column="chunk_hash" jdbcType="VARCHAR"/>
+        <result property="chunkPath" column="chunk_path" jdbcType="VARCHAR"/>
+        <result property="uploaded" column="uploaded" jdbcType="BOOLEAN"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 根据文件标识符查询所有已上传的分片 -->
+    <select id="selectChunksByIdentifier" resultMap="BaseResultMap">
+        SELECT * FROM file_chunk WHERE identifier = #{identifier} ORDER BY chunk_number ASC
+    </select>
+
+    <!-- 根据文件标识符删除所有分片记录 -->
+    <delete id="deleteChunksByIdentifier">
+        DELETE FROM file_chunk WHERE identifier = #{identifier}
+    </delete>
+
+</mapper>

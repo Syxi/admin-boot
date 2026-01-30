@@ -5,7 +5,9 @@ import com.admin.module.system.query.FileRecordQuery;
 import com.admin.module.system.vo.FileRecordVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -62,4 +64,26 @@ public interface FileRecordService extends IService<FileRecord> {
      */
     Resource handleDownloadPdfFile(String pdfStoragePath);
 
+    /**
+     * 检查文件是否已存在（基于MD5）
+     * @param fileMd5
+     * @return
+     */
+    boolean checkFileExistsByMd5(String fileMd5);
+
+    /**
+     * 支持断点续传的源文件下载
+     * @param fileSavePath
+     * @param request
+     * @return
+     */
+    ResponseEntity<Resource> handleDownloadSourceFileWithResume(String fileSavePath, HttpServletRequest request);
+
+    /**
+     * 支持断点续传的PDF文件下载
+     * @param pdfStoragePath
+     * @param request
+     * @return
+     */
+    ResponseEntity<Resource> handleDownloadPdfFileWithResume(String pdfStoragePath, HttpServletRequest request);
 }

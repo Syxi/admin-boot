@@ -4,6 +4,7 @@ import com.admin.common.result.PageResult;
 import com.admin.common.result.ResultVO;
 import com.admin.module.system.entity.FileRecord;
 import com.admin.module.system.query.FileRecordQuery;
+import com.admin.module.system.service.FileChunkService;
 import com.admin.module.system.service.FileRecordService;
 import com.admin.module.system.vo.FileRecordVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "文件接口")
 @RestController
@@ -31,6 +33,8 @@ import java.util.List;
 public class FileRecordController {
 
     private final FileRecordService fileRecordService;
+    
+    private final FileChunkService fileChunkService;
 
 
     @Operation(summary = "文件列表")
@@ -39,8 +43,6 @@ public class FileRecordController {
         IPage<FileRecordVO> fileList = fileRecordService.selectFilePage(fileRecordQuery);
         return PageResult.success(fileList);
     }
-
-
 
 
     @Operation(summary = "删除文件")
@@ -84,7 +86,7 @@ public class FileRecordController {
     @Operation(summary= "下载原文件")
     @PreAuthorize("@pms.hasPerm('sys:file:downloadSourceFile')")
     @GetMapping("/downloadSourceFile/{id}")
-    public ResponseEntity<Resource> handleDownloadSourceFile(@PathVariable("id") Long id) {
+    public ResponseEntity<Resource> handleDownloadSourceFile(@PathVariable("id") Long id, HttpServletRequest request) {
         FileRecord fileRecord = fileRecordService.getById(id);
         if (fileRecord == null) {
             return ResponseEntity.notFound().build();
@@ -99,24 +101,18 @@ public class FileRecordController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(mediaType);
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFileName);
+        headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
 
         String fileSavePath = fileRecord.getFileStoragePath();
-        Resource fileResource = fileRecordService.handleDownloadSourceFile(fileSavePath);
-        if (fileResource == null ) {
-            return ResponseEntity.notFound().build();
-        }
-
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(fileResource);
+        
+        return fileRecordService.handleDownloadSourceFileWithResume(fileSavePath, request);
     }
 
 
     @Operation(summary= "下载pdf文件")
     @PreAuthorize("@pms.hasPerm('sys:file:downloadPdfFile')")
     @GetMapping("/downloadPdfFile/{id}")
-    public ResponseEntity<Resource> handleDownloadPdfFile(@PathVariable("id") Long id) {
+    public ResponseEntity<Resource> handleDownloadPdfFile(@PathVariable("id") Long id, HttpServletRequest request) {
         FileRecord fileRecord = fileRecordService.getById(id);
         if (fileRecord == null) {
             return ResponseEntity.notFound().build();
@@ -131,20 +127,12 @@ public class FileRecordController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(mediaType);
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFileName);
+        headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
 
         String pdfStoragePath = fileRecord.getPdfStoragePath();
-        Resource fileResource = fileRecordService.handleDownloadPdfFile(pdfStoragePath);
-        if (fileResource == null ) {
-            return ResponseEntity.notFound().build();
-        }
-
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(fileResource);
+        
+        return fileRecordService.handleDownloadPdfFileWithResume(pdfStoragePath, request);
     }
-
-
 
 
     @Operation(summary = "文件上传进度")
@@ -155,15 +143,71 @@ public class FileRecordController {
         return null == percent ? ResultVO.success(0) : ResultVO.success((Integer) percent);
     }
 
+    @Operation(summary = "检查分片是否存在")
+    @PreAuthorize("@pms.hasPerm('sys:file:upload')")
+    @PostMapping(value = "/checkChunk", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResultVO<Boolean> checkChunk(@RequestBody Map<String, Object> requestBody) {
+        String identifier = (String) requestBody.get("identifier");
+        Integer chunkNumber = parseInteger(requestBody.get("chunkNumber"));
+        boolean exists = fileChunkService.checkChunkExists(identifier, chunkNumber);
+        return ResultVO.success(exists);
+    }
 
+    private Integer parseInteger(Object value) {
+        if (value instanceof Integer) {
+            return (Integer) value;
+        } else if (value instanceof String) {
+            return Integer.valueOf((String) value);
+        } else if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return null;
+    }
 
+    @Operation(summary = "上传分片")
+    @PreAuthorize("@pms.hasPerm('sys:file:upload')")
+    @PostMapping(value = "/uploadChunk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResultVO<Boolean> uploadChunk(
+            @RequestParam("identifier") String identifier,
+            @RequestParam("chunkNumber") Integer chunkNumber,
+            @RequestParam("totalChunks") Long totalChunks,
+            @RequestParam("totalSize") Long totalSize,
+            @RequestParam("filename") String filename,
+            @RequestParam("chunkHash") String chunkHash,
+            @RequestParam("file") MultipartFile file) {
+        boolean result = fileChunkService.uploadChunk(identifier, chunkNumber, totalChunks, totalSize, filename, chunkHash, file);
+        return ResultVO.judge(result);
+    }
 
+    @Operation(summary = "合并分片")
+    @PreAuthorize("@pms.hasPerm('sys:file:upload')")
+    @PostMapping(value = "/mergeChunks", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResultVO<Boolean> mergeChunks(@RequestBody Map<String, Object> requestBody) {
+        String identifier = (String) requestBody.get("identifier");
+        String filename = (String) requestBody.get("filename");
+        String fileMd5 = (String) requestBody.get("fileMd5");
+        String fileType = (String) requestBody.get("fileType");
+        String description = (String) requestBody.get("description");
+        
+        boolean result = fileChunkService.mergeChunks(identifier, filename, fileMd5, fileType, description);
+        return ResultVO.judge(result);
+    }
 
+    @Operation(summary = "查询已上传的分片")
+    @PreAuthorize("@pms.hasPerm('sys:file:upload')")
+    @GetMapping("/uploadedChunks")
+    public ResultVO<List<Integer>> getUploadedChunks(@RequestParam String identifier) {
+        List<Integer> uploadedChunks = fileChunkService.getUploadedChunks(identifier);
+        return ResultVO.success(uploadedChunks);
+    }
 
-
-
-
-
-
+    @Operation(summary = "检查文件是否已存在")
+    @PreAuthorize("@pms.hasPerm('sys:file:upload')")
+    @PostMapping(value = "/checkFileExists", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResultVO<Boolean> checkFileExists(@RequestBody Map<String, Object> requestBody) {
+        String fileMd5 = (String) requestBody.get("fileMd5");
+        boolean exists = fileRecordService.checkFileExistsByMd5(fileMd5);
+        return ResultVO.success(exists);
+    }
 
 }

@@ -2,6 +2,8 @@ package com.admin.module.system.service.impl;
 
 import com.admin.common.constant.SystemConstants;
 import com.admin.common.enums.FileConvertEnum;
+import com.admin.common.util.RangeResource;
+import com.admin.common.util.SkipInputStream;
 import com.admin.module.system.entity.FileRecord;
 import com.admin.module.system.mapper.FileRecordMapper;
 import com.admin.module.system.query.FileRecordQuery;
@@ -11,6 +13,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -20,6 +23,10 @@ import org.jodconverter.core.office.OfficeException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +34,9 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -307,6 +316,120 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
         }
     }
 
+    @Override
+    public ResponseEntity<Resource> handleDownloadSourceFileWithResume(String fileSavePath, HttpServletRequest request) {
+        File file = new File(fileSavePath);
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        long fileSize = file.length();
+        String rangeHeader = request.getHeader("Range");
+        
+        if (rangeHeader == null) {
+            // 完整下载
+            try {
+                FileSystemResource resource = new FileSystemResource(file);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .contentLength(fileSize)
+                        .body(resource);
+            } catch (Exception e) {
+                log.error("failed to access the file: {}", e.getMessage());
+                return ResponseEntity.internalServerError().build();
+            }
+        } else {
+            // 分片下载
+            try {
+                String[] ranges = rangeHeader.replace("bytes=", "").split("-");
+                long start = Long.parseLong(ranges[0]);
+                long end = ranges.length > 1 && !ranges[1].isEmpty() ? Long.parseLong(ranges[1]) : fileSize - 1;
+                
+                if (end >= fileSize) {
+                    end = fileSize - 1;
+                }
+                
+                if (start > end) {
+                    return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).build();
+                }
+                
+                long contentLength = end - start + 1;
+                
+                // 创建范围资源
+                InputStream inputStream = new FileInputStream(file);
+                SkipInputStream skipStream = new SkipInputStream(inputStream, start);
+                RangeResource resource = new RangeResource(skipStream, contentLength);
+                
+                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .contentLength(contentLength)
+                        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + fileSize)
+                        .body(resource);
+            } catch (Exception e) {
+                log.error("failed to handle range request: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).build();
+            }
+        }
+    }
+
+    @Override
+    public ResponseEntity<Resource> handleDownloadPdfFileWithResume(String pdfStoragePath, HttpServletRequest request) {
+        File file = new File(pdfStoragePath);
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        long fileSize = file.length();
+        String rangeHeader = request.getHeader("Range");
+        
+        if (rangeHeader == null) {
+            // 完整下载
+            try {
+                FileSystemResource resource = new FileSystemResource(file);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .contentLength(fileSize)
+                        .body(resource);
+            } catch (Exception e) {
+                log.error("failed to access the pdf file: {}", e.getMessage());
+                return ResponseEntity.internalServerError().build();
+            }
+        } else {
+            // 分片下载
+            try {
+                String[] ranges = rangeHeader.replace("bytes=", "").split("-");
+                long start = Long.parseLong(ranges[0]);
+                long end = ranges.length > 1 && !ranges[1].isEmpty() ? Long.parseLong(ranges[1]) : fileSize - 1;
+                
+                if (end >= fileSize) {
+                    end = fileSize - 1;
+                }
+                
+                if (start > end) {
+                    return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).build();
+                }
+                
+                long contentLength = end - start + 1;
+                
+                // 创建范围资源
+                InputStream inputStream = new FileInputStream(file);
+                SkipInputStream skipStream = new SkipInputStream(inputStream, start);
+                RangeResource resource = new RangeResource(skipStream, contentLength);
+                
+                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .contentLength(contentLength)
+                        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + fileSize)
+                        .body(resource);
+            } catch (Exception e) {
+                log.error("failed to handle range request for pdf: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).build();
+            }
+        }
+    }
+
     /**
      * 下载pdf文件
      *
@@ -332,9 +455,10 @@ public class FileRecordServiceImpl extends ServiceImpl<FileRecordMapper, FileRec
         }
     }
 
-
+    @Override
+    public boolean checkFileExistsByMd5(String fileMd5) {
+        LambdaQueryWrapper<FileRecord> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FileRecord::getFileMd5, fileMd5);
+        return this.count(queryWrapper) > 0;
+    }
 }
-
-
-
-
