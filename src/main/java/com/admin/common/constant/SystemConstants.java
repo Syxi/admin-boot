@@ -38,7 +38,10 @@ public class SystemConstants {
     // video请求url,映射服务器文件video路径
     public static final String VIDEO_URL = "/videos/";
 
+    public static final String PUBLIC_DOWNLOAD = "/public-download/";
+
     public static final String REPEAT_SUBMIT_MSG = "您的请求已提交，请不要重复提交";
+
 
 
 }

@@ -45,12 +45,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${file.pdf-dir}")
     private String pdfDir;
 
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 前后端分离，怎么访问后端服务器本地资源：先把请求url加入白名单，再映射本地文件夹
         registry.addResourceHandler(SystemConstants.PDF_URL + "**").addResourceLocations("file:" + pdfDir);
         registry.addResourceHandler(SystemConstants.IMG_URL + "**").addResourceLocations("file:" + imagesPath);
         registry.addResourceHandler(SystemConstants.VIDEO_URL + "**").addResourceLocations("file:" + videosDir);
+        registry.addResourceHandler(SystemConstants.PUBLIC_DOWNLOAD + "**").addResourceLocations("file:" + uploadDir);
         WebMvcConfigurer.super.addResourceHandlers(registry);
     }
 

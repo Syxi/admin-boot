@@ -2,6 +2,7 @@ package com.admin.web;
 
 import com.admin.common.result.PageResult;
 import com.admin.common.result.ResultVO;
+import com.admin.common.security.SecurityUtils;
 import com.admin.module.system.entity.FileRecord;
 import com.admin.module.system.query.FileRecordQuery;
 import com.admin.module.system.service.FileChunkService;
@@ -13,8 +14,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +32,7 @@ import java.util.Map;
 @Tag(name = "文件接口")
 @RestController
 @RequestMapping("/file")
+@Slf4j
 @RequiredArgsConstructor
 public class FileRecordController {
 
@@ -36,8 +40,6 @@ public class FileRecordController {
     
     private final FileChunkService fileChunkService;
 
-
-    @Operation(summary = "文件列表")
     @GetMapping("/page")
     public PageResult<FileRecordVO> selectFilePage(FileRecordQuery fileRecordQuery) {
         IPage<FileRecordVO> fileList = fileRecordService.selectFilePage(fileRecordQuery);
@@ -80,58 +82,6 @@ public class FileRecordController {
     public ResultVO<Boolean> handleFileUpload(@RequestParam("file") MultipartFile[] file) {
         boolean result = fileRecordService.handleFileUpload(file).join();
         return ResultVO.judge(result);
-    }
-
-
-    @Operation(summary= "下载原文件")
-    @PreAuthorize("@pms.hasPerm('sys:file:downloadSourceFile')")
-    @GetMapping("/downloadSourceFile/{id}")
-    public ResponseEntity<Resource> handleDownloadSourceFile(@PathVariable("id") Long id, HttpServletRequest request) {
-        FileRecord fileRecord = fileRecordService.getById(id);
-        if (fileRecord == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        String fileName = fileRecord.getFileName();
-        String mimeType = fileRecord.getFileType();
-        MediaType mediaType = MediaType.parseMediaType(mimeType);
-        String encodeFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
-
-        // 设置响应头
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(mediaType);
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFileName);
-        headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
-
-        String fileSavePath = fileRecord.getFileStoragePath();
-        
-        return fileRecordService.handleDownloadSourceFileWithResume(fileSavePath, request);
-    }
-
-
-    @Operation(summary= "下载pdf文件")
-    @PreAuthorize("@pms.hasPerm('sys:file:downloadPdfFile')")
-    @GetMapping("/downloadPdfFile/{id}")
-    public ResponseEntity<Resource> handleDownloadPdfFile(@PathVariable("id") Long id, HttpServletRequest request) {
-        FileRecord fileRecord = fileRecordService.getById(id);
-        if (fileRecord == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        String fileName = fileRecord.getFileName();
-        String mimeType = fileRecord.getFileType();
-        MediaType mediaType = MediaType.parseMediaType(mimeType);
-        String encodeFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
-
-        // 设置响应头
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(mediaType);
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFileName);
-        headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
-
-        String pdfStoragePath = fileRecord.getPdfStoragePath();
-        
-        return fileRecordService.handleDownloadPdfFileWithResume(pdfStoragePath, request);
     }
 
 
@@ -209,5 +159,7 @@ public class FileRecordController {
         boolean exists = fileRecordService.checkFileExistsByMd5(fileMd5);
         return ResultVO.success(exists);
     }
+
+
 
 }

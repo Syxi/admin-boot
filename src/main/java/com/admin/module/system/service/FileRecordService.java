@@ -71,19 +71,5 @@ public interface FileRecordService extends IService<FileRecord> {
      */
     boolean checkFileExistsByMd5(String fileMd5);
 
-    /**
-     * 支持断点续传的源文件下载
-     * @param fileSavePath
-     * @param request
-     * @return
-     */
-    ResponseEntity<Resource> handleDownloadSourceFileWithResume(String fileSavePath, HttpServletRequest request);
 
-    /**
-     * 支持断点续传的PDF文件下载
-     * @param pdfStoragePath
-     * @param request
-     * @return
-     */
-    ResponseEntity<Resource> handleDownloadPdfFileWithResume(String pdfStoragePath, HttpServletRequest request);
 }
