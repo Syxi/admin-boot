@@ -161,5 +161,37 @@ public class FileRecordController {
     }
 
 
+    @Operation(summary= "下载pdf文件")
+    @PreAuthorize("@pms.hasPerm('sys:file:downloadPdfFile')")
+    @GetMapping("/downloadPdfFile/{id}")
+    public ResponseEntity<Resource> handleDownloadPdfFile(@PathVariable("id") Long id) {
+        FileRecord fileRecord = fileRecordService.getById(id);
+        if (fileRecord == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String fileName = fileRecord.getFileName();
+        String mimeType = fileRecord.getFileType();
+        MediaType mediaType = MediaType.parseMediaType(mimeType);
+        String encodeFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+
+        // 设置响应头
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFileName);
+
+        String pdfStoragePath = fileRecord.getPdfStoragePath();
+        Resource fileResource = fileRecordService.handleDownloadPdfFile(pdfStoragePath);
+        if (fileResource == null ) {
+            return ResponseEntity.notFound().build();
+        }
+
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(fileResource);
+    }
+
+
 
 }
