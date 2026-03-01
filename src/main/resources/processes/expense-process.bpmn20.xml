@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+    <process id="expense-process" name="费用报销流程" isExecutable="true">
+
+        <!-- 开始节点 -->
+        <startEvent id="startEvent" name="开始"/>
+
+        <!-- 填写报销单 -->
+        <userTask id="applyTask" name="填写报销单"
+                  flowable:assignee="${applicantId}"
+                  flowable:formKey="expenseForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 直属领导审批 -->
+        <userTask id="leaderTask" name="直属领导审批"
+                  flowable:candidateGroups="leader"
+                  flowable:formKey="approveForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 财务审批 -->
+        <userTask id="financeTask" name="财务审批"
+                  flowable:candidateGroups="finance"
+                  flowable:formKey="approveForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 出纳付款 -->
+        <userTask id="cashierTask" name="出纳付款"
+                  flowable:candidateGroups="cashier"
+                  flowable:formKey="paymentForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 排他网关：金额判断 -->
+        <exclusiveGateway id="amountGateway" name="金额判断"/>
+
+        <!-- 排他网关：领导审批结果 -->
+        <exclusiveGateway id="leaderGateway" name="领导审批结果"/>
+
+        <!-- 排他网关：财务审批结果 -->
+        <exclusiveGateway id="financeGateway" name="财务审批结果"/>
+
+        <!-- 结束节点 -->
+        <endEvent id="endEvent" name="结束"/>
+
+        <!-- 流程流转 -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="applyTask"/>
+
+        <sequenceFlow id="flow2" sourceRef="applyTask" targetRef="leaderTask"/>
+
+        <sequenceFlow id="flow3" sourceRef="leaderTask" targetRef="leaderGateway"/>
+
+        <!-- 领导驳回 -->
+        <sequenceFlow id="flow4" sourceRef="leaderGateway" targetRef="endEvent">
+            <conditionExpression xsi:type="tFormalExpression">${!approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 领导通过 -->
+        <sequenceFlow id="flow5" sourceRef="leaderGateway" targetRef="amountGateway">
+            <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 金额小于等于5000，直接到财务 -->
+        <sequenceFlow id="flow6" sourceRef="amountGateway" targetRef="financeTask">
+            <conditionExpression xsi:type="tFormalExpression">${amount &lt;= 5000}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 金额大于5000，需要更高层级审批（这里简化处理，直接到财务） -->
+        <sequenceFlow id="flow7" sourceRef="amountGateway" targetRef="financeTask">
+            <conditionExpression xsi:type="tFormalExpression">${amount &gt; 5000}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 财务审批 -->
+        <sequenceFlow id="flow8" sourceRef="financeTask" targetRef="financeGateway"/>
+
+        <!-- 财务驳回 -->
+        <sequenceFlow id="flow9" sourceRef="financeGateway" targetRef="endEvent">
+            <conditionExpression xsi:type="tFormalExpression">${!approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 财务通过，到出纳付款 -->
+        <sequenceFlow id="flow10" sourceRef="financeGateway" targetRef="cashierTask">
+            <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 付款完成，流程结束 -->
+        <sequenceFlow id="flow11" sourceRef="cashierTask" targetRef="endEvent"/>
+
+    </process>
+
+    <!-- 流程图布局 -->
+    <bpmndi:BPMNDiagram id="BPMNDiagram_expense-process">
+        <bpmndi:BPMNPlane bpmnElement="expense-process" id="BPMNPlane_expense-process">
+            <bpmndi:BPMNShape bpmnElement="startEvent" id="BPMNShape_startEvent">
+                <omgdc:Bounds height="30.0" width="30.0" x="100.0" y="163.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="applyTask" id="BPMNShape_applyTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="180.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="leaderTask" id="BPMNShape_leaderTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="330.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="leaderGateway" id="BPMNShape_leaderGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="480.0" y="158.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="amountGateway" id="BPMNShape_amountGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="570.0" y="158.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="financeTask" id="BPMNShape_financeTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="660.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="financeGateway" id="BPMNShape_financeGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="810.0" y="158.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="cashierTask" id="BPMNShape_cashierTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="900.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="endEvent" id="BPMNShape_endEvent">
+                <omgdc:Bounds height="28.0" width="28.0" x="1050.0" y="164.0"/>
+            </bpmndi:BPMNShape>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+
+</definitions>

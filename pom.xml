@@ -327,6 +327,19 @@
             <version>5.16.0</version>
         </dependency>
 
+        <!-- Flowable 工作流引擎 -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-spring-boot-starter</artifactId>
+            <version>7.1.0</version>
+        </dependency>
+        <!-- Flowable REST API -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-spring-boot-starter-rest</artifactId>
+            <version>7.1.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

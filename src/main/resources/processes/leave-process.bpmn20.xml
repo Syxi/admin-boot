@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+    <process id="leave-process" name="请假审批流程" isExecutable="true">
+
+        <!-- 开始节点 -->
+        <startEvent id="startEvent" name="开始"/>
+
+        <!-- 申请人填写 -->
+        <userTask id="applyTask" name="填写请假申请"
+                  flowable:assignee="${applicantId}"
+                  flowable:formKey="leaveForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 部门经理审批 -->
+        <userTask id="managerTask" name="部门经理审批"
+                  flowable:candidateGroups="manager"
+                  flowable:formKey="approveForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 人事审批 -->
+        <userTask id="hrTask" name="人事审批"
+                  flowable:candidateGroups="hr"
+                  flowable:formKey="approveForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 总经理审批（超过3天） -->
+        <userTask id="ceoTask" name="总经理审批"
+                  flowable:candidateGroups="ceo"
+                  flowable:formKey="approveForm">
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.admin.module.workflow.listener.WorkflowTaskListener"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- 排他网关：判断是否超过3天 -->
+        <exclusiveGateway id="daysGateway" name="判断请假天数"/>
+
+        <!-- 排他网关：部门经理审批结果 -->
+        <exclusiveGateway id="managerGateway" name="部门经理审批结果"/>
+
+        <!-- 排他网关：人事审批结果 -->
+        <exclusiveGateway id="hrGateway" name="人事审批结果"/>
+
+        <!-- 排他网关：总经理审批结果 -->
+        <exclusiveGateway id="ceoGateway" name="总经理审批结果"/>
+
+        <!-- 结束节点 -->
+        <endEvent id="endEvent" name="结束"/>
+
+        <!-- 流程流转 -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="applyTask"/>
+
+        <sequenceFlow id="flow2" sourceRef="applyTask" targetRef="managerTask"/>
+
+        <sequenceFlow id="flow3" sourceRef="managerTask" targetRef="managerGateway"/>
+
+        <!-- 部门经理驳回 -->
+        <sequenceFlow id="flow4" sourceRef="managerGateway" targetRef="endEvent">
+            <conditionExpression xsi:type="tFormalExpression">${!approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 部门经理通过 -->
+        <sequenceFlow id="flow5" sourceRef="managerGateway" targetRef="daysGateway">
+            <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 小于等于3天，直接到人事 -->
+        <sequenceFlow id="flow6" sourceRef="daysGateway" targetRef="hrTask">
+            <conditionExpression xsi:type="tFormalExpression">${days &lt;= 3}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 超过3天，需要总经理审批 -->
+        <sequenceFlow id="flow7" sourceRef="daysGateway" targetRef="ceoTask">
+            <conditionExpression xsi:type="tFormalExpression">${days &gt; 3}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 总经理审批后到人事 -->
+        <sequenceFlow id="flow8" sourceRef="ceoTask" targetRef="ceoGateway"/>
+
+        <!-- 总经理驳回 -->
+        <sequenceFlow id="flow9" sourceRef="ceoGateway" targetRef="endEvent">
+            <conditionExpression xsi:type="tFormalExpression">${!approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 总经理通过 -->
+        <sequenceFlow id="flow10" sourceRef="ceoGateway" targetRef="hrTask">
+            <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 人事审批 -->
+        <sequenceFlow id="flow11" sourceRef="hrTask" targetRef="hrGateway"/>
+
+        <!-- 人事驳回 -->
+        <sequenceFlow id="flow12" sourceRef="hrGateway" targetRef="endEvent">
+            <conditionExpression xsi:type="tFormalExpression">${!approved}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 人事通过，流程结束 -->
+        <sequenceFlow id="flow13" sourceRef="hrGateway" targetRef="endEvent">
+            <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+        </sequenceFlow>
+
+    </process>
+
+    <!-- 流程图布局 -->
+    <bpmndi:BPMNDiagram id="BPMNDiagram_leave-process">
+        <bpmndi:BPMNPlane bpmnElement="leave-process" id="BPMNPlane_leave-process">
+            <bpmndi:BPMNShape bpmnElement="startEvent" id="BPMNShape_startEvent">
+                <omgdc:Bounds height="30.0" width="30.0" x="100.0" y="163.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="applyTask" id="BPMNShape_applyTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="180.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="managerTask" id="BPMNShape_managerTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="330.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="managerGateway" id="BPMNShape_managerGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="480.0" y="158.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="daysGateway" id="BPMNShape_daysGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="570.0" y="158.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="hrTask" id="BPMNShape_hrTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="660.0" y="138.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="ceoTask" id="BPMNShape_ceoTask">
+                <omgdc:Bounds height="80.0" width="100.0" x="540.0" y="280.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="ceoGateway" id="BPMNShape_ceoGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="690.0" y="300.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="hrGateway" id="BPMNShape_hrGateway">
+                <omgdc:Bounds height="40.0" width="40.0" x="810.0" y="158.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="endEvent" id="BPMNShape_endEvent">
+                <omgdc:Bounds height="28.0" width="28.0" x="920.0" y="164.0"/>
+            </bpmndi:BPMNShape>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+
+</definitions>
