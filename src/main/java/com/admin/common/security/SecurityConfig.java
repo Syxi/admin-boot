@@ -25,6 +25,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * Spring Security 安全配置
@@ -59,7 +60,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 // 配置请求授权
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(SecurityConstants.LOGIN_PATH).permitAll()
+                        .requestMatchers(AntPathRequestMatcher.antMatcher(SecurityConstants.LOGIN_PATH)).permitAll()
                         .anyRequest().authenticated()
                 )
                 // 设置会话管理为无状态，不创建Session
@@ -107,7 +108,9 @@ public class SecurityConfig {
         return (web) -> {
             if (CollectionUtils.isNotEmpty(securityProperties.getIgnoreUrls())) {
                 web.ignoring().requestMatchers(
-                        securityProperties.getIgnoreUrls().toArray(new String[0])
+                        securityProperties.getIgnoreUrls().stream()
+                                .map(AntPathRequestMatcher::antMatcher)
+                                .toArray(AntPathRequestMatcher[]::new)
                 );
             }
         };
